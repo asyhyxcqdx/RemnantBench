@@ -1,19 +1,22 @@
 # 本轮分工与原 Harbor 命令
 
-API 计划共 1560 次：项目方在 234、88 跑 Astra、Sol、Opus、Gemini 的 Full200，
+API 计划共 1560 次：你在 234、88 服务器跑 Astra、Sol、Opus、Gemini 的 Full200，
 以及 Sol 的两项 Lite40 消融（880 次）；学长跑 Kimi、GLM、DeepSeek 的 Full200，
 以及 DeepSeek 的两项 Lite40 消融（680 次）。Qwen 沿用已单独安排的本地评测。
 
-准备各自渠道的私有 env 文件后，在 `RemnantBench/harbor/` 下逐条运行。
+所有密钥存放在根目录同一个私有 `.env`，使用 `configs/api.env.example` 中的变量名。
+在 `RemnantBench/harbor/` 下先执行 `source ../.env`，再逐条运行下面的命令。
+每条命令通过临时环境变量选择密钥，仍使用原 Harbor 的 `--env-file ../.env`。
 这些命令直接调用原 `run_harbor`，连接 YAML 的唯一增量为已约定的 150 步上限。
 每个模型/实验只安排一份正式运行。下面并发以 4 为例。
 
 ## 学长
 
 ```bash
+MSWEA_API_KEY="${GLM_API_KEY:?请先填写 GLM_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../glm.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/glm-5.3 \
   --n-concurrent 4 --n-attempts 1 \
@@ -23,9 +26,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak reasoning_effort=max \
   --ak retry_service_failures=true
 
+MSWEA_API_KEY="${KIMI_API_KEY:?请先填写 KIMI_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../kimi.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/kimi-k3 \
   --n-concurrent 4 --n-attempts 1 \
@@ -34,9 +38,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak config_file=../configs/connection-configs/kimi-k3.yaml \
   --ak reasoning_effort=max
 
+MSWEA_API_KEY="${DEEPSEEK_API_KEY:?请先填写 DEEPSEEK_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../deepseek.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/deepseek-v4.1-flash \
   --n-concurrent 4 --n-attempts 1 \
@@ -45,9 +50,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak config_file=../configs/connection-configs/deepseek-v4.1-flash.yaml \
   --ak reasoning_effort=max
 
+MSWEA_API_KEY="${DEEPSEEK_API_KEY:?请先填写 DEEPSEEK_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Lite40-file-hints \
-  --env-file ../deepseek.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/deepseek-v4.1-flash \
   --n-concurrent 4 --n-attempts 1 \
@@ -56,9 +62,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak config_file=../configs/connection-configs/deepseek-v4.1-flash.yaml \
   --ak reasoning_effort=max
 
+MSWEA_API_KEY="${DEEPSEEK_API_KEY:?请先填写 DEEPSEEK_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Lite40-neutral-repair \
-  --env-file ../deepseek.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/deepseek-v4.1-flash \
   --n-concurrent 4 --n-attempts 1 \
@@ -68,12 +75,13 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak reasoning_effort=max
 ```
 
-## 项目方
+## 你（234、88 服务器）
 
 ```bash
+MSWEA_API_KEY="${ASTRA_API_KEY:?请先填写 ASTRA_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../astra.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model openai/gpt-6-astra \
   --n-concurrent 4 --n-attempts 1 \
@@ -83,9 +91,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak reasoning_effort=xhigh \
   --ak responses_system_as_instructions=true
 
+MSWEA_API_KEY="${SOL_API_KEY:?请先填写 SOL_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../sol.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model openai/gpt-6.1-sol \
   --n-concurrent 4 --n-attempts 1 \
@@ -95,9 +104,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak reasoning_effort=high \
   --ak responses_system_as_instructions=true
 
+MSWEA_API_KEY="${CLAUDE_API_KEY:?请先填写 CLAUDE_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../opus.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model anthropic/claude-opus-5-5 \
   --n-concurrent 4 --n-attempts 1 \
@@ -106,9 +116,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak config_file=../configs/connection-configs/claude-opus-5-5.yaml \
   --ak reasoning_effort=max
 
+MSWEA_API_KEY="${GEMINI_API_KEY:?请先填写 GEMINI_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../gemini.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/gemini-3.8-flash \
   --n-concurrent 4 --n-attempts 1 \
@@ -117,9 +128,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak config_file=../configs/connection-configs/gemini-3.8-flash.yaml \
   --ak reasoning_effort=high
 
+MSWEA_API_KEY="${SOL_API_KEY:?请先填写 SOL_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Lite40-file-hints \
-  --env-file ../sol.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model openai/gpt-6.1-sol \
   --n-concurrent 4 --n-attempts 1 \
@@ -129,9 +141,10 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak reasoning_effort=high \
   --ak responses_system_as_instructions=true
 
+MSWEA_API_KEY="${SOL_API_KEY:?请先填写 SOL_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Lite40-neutral-repair \
-  --env-file ../sol.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model openai/gpt-6.1-sol \
   --n-concurrent 4 --n-attempts 1 \

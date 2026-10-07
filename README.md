@@ -6,7 +6,7 @@ RemnantBench 的任务构建与评测源码来自现有 Belta、FeatureFactory �
 
 - [原项目 Harbor 评测说明](harbor/adapters/belta/README.md)
 - [本批配置与运行命令](docs/evaluation.md)
-- [学长与项目方分工](docs/collaboration.md)
+- [234/88 服务器与学长分工](docs/collaboration.md)
 - [原有指标字段](docs/metrics.md)
 - [原项目完整流程说明](docs/construction.md)
 - [魔搭数据集与镜像](https://modelscope.cn/datasets/yinhuo/RemnantBench)
@@ -43,13 +43,15 @@ cat downloads/images/remnantbench-images.tar.gz.part-{000..109} | gzip -dc | doc
 cd harbor
 uv sync --frozen --no-dev
 cd ..
-cp configs/api.env.example glm.env
-chmod 600 glm.env
-# 编辑 glm.env，填写该渠道的 API 密钥。
+cp configs/api.env.example .env
+chmod 600 .env
+# 编辑 .env，填入需要运行的模型所用密钥。
 cd harbor
+source ../.env
+MSWEA_API_KEY="${GLM_API_KEY:?请先填写 GLM_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../glm.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model litellm_proxy/glm-5.3 \
   --n-concurrent 4 --n-attempts 1 \

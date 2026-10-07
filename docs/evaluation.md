@@ -8,9 +8,11 @@
 ## 直接运行示例
 
 ```bash
+source ../.env
+MSWEA_API_KEY="${SOL_API_KEY:?请先填写 SOL_API_KEY}" \
 uv run --no-sync python -m adapters.belta.run_harbor \
   --path ../datasets/Full200 \
-  --env-file ../sol.env \
+  --env-file ../.env \
   --agent mini-swe-agent \
   --model openai/gpt-6.1-sol \
   --n-concurrent 4 --n-attempts 1 \
@@ -21,7 +23,14 @@ uv run --no-sync python -m adapters.belta.run_harbor \
   --ak responses_system_as_instructions=true
 ```
 
-`sol.env` 从 `configs/api.env.example` 复制并填入对应渠道的密钥。
+全部密钥存放在根目录同一个 `.env`，由 `configs/api.env.example` 复制后填写。
+`source ../.env` 将里面的命名变量读入当前 shell；命令前的
+`MSWEA_API_KEY="${SOL_API_KEY:?...}"` 只为本次进程选择 Sol 的密钥。
+其余模型同理，继续由原 Harbor 读取 `MSWEA_API_KEY`。
+共享 `.env` 不定义 `MSWEA_API_KEY`，避免 Harbor 加载文件时覆盖本次选择。
+同一个渠道密钥可填在多个模型变量中；并行命令各自选择，互不切换文件。
+各模型实际请求地址沿用原 YAML 的 `api_base`；`.env` 的 `LLM_BASE_URL` 用于
+原 `run_harbor` 确定网络允许访问的主机。
 `config_file` 读取原模型连接配置；`agent.step_limit: 150` 已写在该 YAML 内。
 `--ak` 是 Harbor 的 `--agent-kwarg` 简写。已有 `config_file` 时，不再同时传 `config`。
 
@@ -37,7 +46,19 @@ uv run --no-sync python -m adapters.belta.run_harbor \
 
 所有 YAML 位于 `configs/connection-configs/`。模型、档位与特殊开关来自这批原有
 连接配置和实际试跑记录；完整逐条命令见 [分工说明](collaboration.md)。
-修改渠道地址时，同时修改私有 env 的地址与 YAML 的 `api_base`，沿用原入口读取方式。
+修改渠道地址时，同时对齐 `.env` 的 `LLM_BASE_URL` 与相应 YAML 的 `api_base` 主机。
+
+## 路由前缀与 GLM 服务失败重试
+
+`litellm_proxy/` 是 LiteLLM 的请求路由前缀，沿用这批实际试跑的配置。
+例如 `litellm_proxy/glm-5.3`：库识别前缀后，通过 YAML 中配置的 OpenLux 接口发送
+模型名 `glm-5.3`。这不要求在本机启动另一个代理服务。
+
+`--ak retry_service_failures=true` 是原 Harbor 已有的 GLM 专项开关。只对
+`litellm_proxy/glm-5.3`、`api.openlux.ai` 和已观察到的完整服务失败正文生效：
+HTTP 200 没有工具调用，但回复“请求无法完成，请稍后重试或减少请求内容”那条固定提示。
+额外最多重试 5 次，间隔 2、4、8、16、32 秒；失败正文单独记录，不能进入对话。
+正常内容、模型格式错误不归入该专项重试；网络/API 异常继续走原有请求重试规则。
 
 ## 题集与输出路径
 
