@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_statement",
+    "interfaces"
+  ],
+  "properties": {
+    "task_statement": {
+      "type": "string",
+      "description": "A short, high-level statement of the feature goal. Identify what capability the coding task is about without enumerating implementation requirements, private edge cases, repair steps, or details of the reference solution.",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "interfaces": {
+      "type": "array",
+      "description": "Only the interfaces needed to identify the coding task. Do not include internal helpers merely because they appear in private evidence, and do not expand the list to document the full reference implementation.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description",
+          "path",
+          "code"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "A brief identification of this interface's public purpose and input/output role. It is not a complete behavior specification: do not enumerate implementation rules, private edge cases, internal helpers, control flow, algorithms, or repair steps.",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "path": {
+            "type": "string",
+            "description": "A single-line repository-relative POSIX file path without a leading slash, parent or current-directory traversal, backslashes, empty path segments, a Windows drive prefix, surrounding whitespace, control characters, or Markdown backticks.",
+            "minLength": 1,
+            "pattern": "\\S",
+            "allOf": [
+              {
+                "not": {
+                  "pattern": "^/"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              },
+              {
+                "not": {
+                  "pattern": "\\\\"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              },
+              {
+                "not": {
+                  "pattern": "(^|/)(?:\\.|\\.\\.)(?:/|$)"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              },
+              {
+                "not": {
+                  "pattern": "//"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              },
+              {
+                "not": {
+                  "pattern": "^[A-Za-z]:"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              },
+              {
+                "not": {
+                  "pattern": "[`\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]"
+                },
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe single-line repository-relative POSIX path."
+              },
+              {
+                "pattern": "^\\S(?:.*\\S)?$",
+                "x-error-code": "INVALID_REPO_PATH",
+                "x-error-message": "{path} must be a safe repository-relative POSIX path."
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "description": "A declaration skeleton appropriate to the repository file, containing only exact public names, signatures, type information, defaults, decorators, and concise API documentation already exposed by the repository. Do not synthesize detailed documentation from private implementation evidence. Put the literal '<your code>' on its own line wherever an implementation body belongs. Do not include Markdown fences, complete implementation bodies, patch content, unrelated declarations, or upstream benchmark environment names.",
+            "minLength": 1,
+            "pattern": "\\S",
+            "allOf": [
+              {
+                "pattern": "(?m)^[ \\t]*<your code>[ \\t]*$",
+                "x-error-code": "MISSING_IMPLEMENTATION_PLACEHOLDER",
+                "x-error-message": "{path} must put '<your code>' on its own line to mark at least one implementation body.",
+                "x-missing": true
+              },
+              {
+                "not": {
+                  "pattern": "(?:```|/[t]estbed|agent[_]code|Feature[B]ench)"
+                },
+                "x-error-code": "INVALID_INTERFACE_SKELETON",
+                "x-error-message": "{path} contains a forbidden wrapper or placeholder."
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+# addr, so_mark, and file.path must stay in sync with the constants in
+# bin/network-policy (GOST_PORT, GOST_MARK, ALLOWLIST); the `reload` interval
+# must stay below RELOAD_WAIT there.
+services:
+  - name: transparent-egress
+    addr: ":12345"
+    bypass: allowlist
+    metadata:
+      so_mark: 114514
+    handler:
+      type: red
+      metadata:
+        # The red handler maps non-positive values back to its 15-second
+        # default. Match Harbor's outer agent timeout with an explicit value.
+        readTimeout: 1h
+        sniffing: true
+        sniffing.timeout: 5s
+        sniffing.fallback: true
+    listener:
+      type: red
+
+bypasses:
+  - name: allowlist
+    whitelist: true
+    reload: 1s
+    file:
+      path: /opt/egress-sidecar/allowlist.txt

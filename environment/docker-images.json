@@ -1,0 +1,688 @@
+[
+  {
+    "tag": "belta-retire-base-aws--chalice-9c7acf09eddbc151:latest",
+    "present": true,
+    "id": "sha256:f8aa0b8747bbdb50cb1c05f1e9375ce5aa894c4619e3cacec1ce0a6cc158eb81",
+    "size": 1875813392,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "9c7acf09eddbc1510f976d69101cd5ccd0f27fb8697cdbba47debff4a1831702",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-beeware--toga-aae471c1d4d9ee4c:latest",
+    "present": true,
+    "id": "sha256:83d5b5aca60d9d8e2b5383e8c4762df4d5791ea2d15fc9ecc52169009c256273",
+    "size": 1921002197,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "aae471c1d4d9ee4cbbf89072d4e9e6461405800855a6263a91a8e5fa1778342b",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-biopython--biopython-2ec5164a59eefce0:latest",
+    "present": true,
+    "id": "sha256:e14428d157ab293948a3c4b0e990285b79fa2f03373821c33e13897c180d7228",
+    "size": 2551796942,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "2ec5164a59eefce0cee4aa218a73df1520b3e3ebced420adc779eddd1e85ec56",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-davidhalter--jedi-9e7dd59d71b7f7f1:latest",
+    "present": true,
+    "id": "sha256:78ea0ab1811bd9332b977bb20b8ccce842e246586c1bc856ab2d72a8b908c2f3",
+    "size": 2029572427,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "9e7dd59d71b7f7f13a15c84dfb559364fc05ce4fbd2addb3ed5a6789e026453b",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-django-extensions--django-extensions-f27286ef9881f129:latest",
+    "present": true,
+    "id": "sha256:1ae6ccb09b53ab37c5a33b0d5e6aa3b53996806914dc1303f734f1e85dab20b7",
+    "size": 1925004028,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "f27286ef9881f12991db1387d4643098ffa9cb69be486f8a34ff9825bfc96155",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-docker--docker-py-9833a6e17c62f9fa:latest",
+    "present": true,
+    "id": "sha256:f320dfccc417fa7d69a1d8c293bce68c1d8532c506485b723f36848111cb1677",
+    "size": 1904438507,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "9833a6e17c62f9fa776334d2cf29697b65f70f7e8390a958cb302ee171ae324d",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-dpkp--kafka-python-d938d00cbaa95c9a:latest",
+    "present": true,
+    "id": "sha256:40a91c09580dd03d651b9079d5ee58c7139524c3dd3ed13b85b2ccad090ebba7",
+    "size": 1965456578,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "d938d00cbaa95c9a9ee75f321a09ae82c7f8ffd0569a2c43a6b220c8cd6344db",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-encode--django-rest-framework-495d6eebd495edca:latest",
+    "present": true,
+    "id": "sha256:1a6803d677748ab5efeb891b731e27cc1810b4b64fff0cad1d73fd3d1e9eff52",
+    "size": 2095937150,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "495d6eebd495edca50cb562d6d3f26fc5103e781ed5ec53137ccf228c55364a1",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-fail2ban--fail2ban-6ba245e19f5eadf7:latest",
+    "present": true,
+    "id": "sha256:4796303c58ae4d10d8db0568b5062a6131daea0959716eb2668bfeafa709bceb",
+    "size": 1837295618,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "6ba245e19f5eadf789891eaa1e47bf0faf8ec485f5d9cf053d39065346e7766c",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-falconry--falcon-a3a538695060667b:latest",
+    "present": true,
+    "id": "sha256:5f2930f44fea49e9739528adda1568a0f1764d3dbf9f76d16d13436e853afeb5",
+    "size": 1890023189,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "a3a538695060667bfb94aaf157283b87718ac71f2f765f19f8f61c964e9ae7a4",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-fonttools--fonttools-da5add8f9a8021a0:latest",
+    "present": true,
+    "id": "sha256:52e047975e425dcd4f7427fdf03f3474ea7a277b9081c376449f5a4372f9846b",
+    "size": 2490282163,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.12-noble-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.12-noble-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "91391a167a48886790b6db991b72bf14e4040ca6508ba53b5c81b4dea50d636b",
+      "com.feature-factory.stage2.image-id": "python:3.12-noble-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.12-noble-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "da5add8f9a8021a034be9fc0fccac71ea689a614077c4de1de28a5340f2195bf",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "24.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-google--yapf-f3c735d28e8c3f07:latest",
+    "present": true,
+    "id": "sha256:5d11d68d3de6e50b72fc1caa2002f33b8b42960da583ad27814f924cfa48a1fd",
+    "size": 1860147182,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "f3c735d28e8c3f07fd9d8d40471d668be8f515d6cbaedadbf3389af3c5b70f4c",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-idank--explainshell-b762fad21b5ea225:latest",
+    "present": true,
+    "id": "sha256:43411a8af4e0a2a073c176dd52c9e7b6b904c2eae7f0c9cf56cc24ae98efe0d1",
+    "size": 2715324772,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.12-noble-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.12-noble-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "91391a167a48886790b6db991b72bf14e4040ca6508ba53b5c81b4dea50d636b",
+      "com.feature-factory.stage2.image-id": "python:3.12-noble-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.12-noble-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "b762fad21b5ea2254c29184c9626b84fcf2cc9ff3edf715e7ba2834c5cd4b3a7",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "24.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-kozea--weasyprint-4c0eec4e708f0bbb:latest",
+    "present": true,
+    "id": "sha256:c12820bf8a08481be4bb165b2e0634ea19d607e2f2f626d3a88b7b2912dae35c",
+    "size": 2109907483,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "4c0eec4e708f0bbb430a00a72a3d5569e7f79c3ee664d3ae7b699b1447788fb5",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-kubernetes-client--python-a8ebda9e979d1f74:latest",
+    "present": true,
+    "id": "sha256:7fbb09416bfe56a14b889c2378c0b2d5ffb4dd7f91f54d4f34dd2b3ae06bf56b",
+    "size": 2343472686,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "a8ebda9e979d1f74735e6a62fc0fe40906db040b2e740f66865fddd7d8caaf1f",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-librosa--librosa-b8a71883e2b3f01a:latest",
+    "present": true,
+    "id": "sha256:6a27174f6b2f4919eced71d6d9182d890a2d6ff5ee0546ef598c65d3bd32a157",
+    "size": 3161427962,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.12-noble-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.12-noble-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "91391a167a48886790b6db991b72bf14e4040ca6508ba53b5c81b4dea50d636b",
+      "com.feature-factory.stage2.image-id": "python:3.12-noble-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.12-noble-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "b8a71883e2b3f01a1ea3446362682319c33f289ddb8e81c39d866c3cece3ceaa",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "24.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-magic-wormhole--magic-wormhole-816c60651f3a85cc:latest",
+    "present": true,
+    "id": "sha256:d3c7be66a180f6a8a6c6eca37f83b997b09b72967b9d303c7f187f116c6e6dc3",
+    "size": 1901489272,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "816c60651f3a85cc59454c1dc94dca0059a0e150e97fce6ef4d2f9d51d3ef1c5",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-marshmallow-code--marshmallow-de0f3abb594e0592:latest",
+    "present": true,
+    "id": "sha256:656ae34924db5754995237123c1534949fb9b22abdeb9d216a2434bf800769b1",
+    "size": 1870096029,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "de0f3abb594e0592fde14ce7a449fef4813f360688c7c89b762f427556224304",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pallets--flask-a17ae389ce34a157:latest",
+    "present": true,
+    "id": "sha256:fb83c7b12041f77852f2851a38170fe24c9a2d134877b252726a9234922822f9",
+    "size": 1872805444,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "a17ae389ce34a157cd5d87beb647e42ca3a7230ec102120e73b1d60bf5776ed3",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pallets--werkzeug-7826dba499421ae0:latest",
+    "present": true,
+    "id": "sha256:9ea0b2823149e132ae14478e56f819f9b1aba2cd8c7099ceb5dca3ea3caf5b7d",
+    "size": 1891758906,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "7826dba499421ae0e5e271ab3f3b4207698e1d8919e4ed59ea6990096466a38a",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-patroni--patroni-8078bdd5077e7454:latest",
+    "present": true,
+    "id": "sha256:541358434de8003219d0724020693e91dc4e84114bab4e8458952f10925a6756",
+    "size": 2000104909,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "8078bdd5077e7454b8b688bca78808d178855897d8c3a1f30871e52a85e5fe8e",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pdfminer--pdfminer-six-0bdda0448b5f0d6f:latest",
+    "present": true,
+    "id": "sha256:d4e4b0bc7ad222e4b8a529393cf19da4273145b8a068eb173811283a82bafd4e",
+    "size": 1987142070,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "0bdda0448b5f0d6f252bf0c95a5dad3c69481a0987e1feb2e66f30acd194c659",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pennersr--django-allauth-99cb80e83b36638f:latest",
+    "present": true,
+    "id": "sha256:087e7b88895f9fddbfac1d835d03ae63592c21b3027016b6b416aef817dfaadf",
+    "size": 1976226522,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "99cb80e83b36638f5422fe4ae67561f15c923eb5bbe2a3c385c775b039d14d85",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pre-commit--pre-commit-f0326d9777cdd827:latest",
+    "present": true,
+    "id": "sha256:3803e894b76d471f554562e7b8b69fba40415491c3995979cceb0498fb26c8de",
+    "size": 1856529305,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "f0326d9777cdd82773ac6d5d190ff44dec7172712e66cdcab65396e76de43d42",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pygithub--pygithub-5baaaebe787c0a26:latest",
+    "present": true,
+    "id": "sha256:e4f57767d33d2b28f11cf84a881d965007947b648c57a639acda896c471bf7b0",
+    "size": 2019135776,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.12-noble-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.12-noble-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "91391a167a48886790b6db991b72bf14e4040ca6508ba53b5c81b4dea50d636b",
+      "com.feature-factory.stage2.image-id": "python:3.12-noble-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.12-noble-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "5baaaebe787c0a269e6b25d2b7f517ba9d3c997e2215bfe92432509c58025bd5",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "24.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-pytest-dev--pytest-3b9df2e19b75f013:latest",
+    "present": true,
+    "id": "sha256:442f265c5dca26dd75f277f8959df800bfa859107760e81481f3355317709d4b",
+    "size": 1952283043,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "3b9df2e19b75f01388cde28486bc406c68e99ee241921a65c1bfd1d7b90ab8d2",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-python-openxml--python-docx-1c9f938a5e9377e1:latest",
+    "present": true,
+    "id": "sha256:271462ff8ea9b9b119f9db3bb54189c8257b6a48341c91ba4fc939f8b33ebc51",
+    "size": 1938475798,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "1c9f938a5e9377e10679b36f34a51e41ce249d16e1df18dd3280f956e2d153fb",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-redis--redis-py-90b358ffbb717c32:latest",
+    "present": true,
+    "id": "sha256:308e2d81eefdbeb5c269d210ec3dff710563abf1f72c2cf9550769d7c96ee42a",
+    "size": 2103127750,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "90b358ffbb717c32e56f3ee3f67887e4482b770f2050483814e26f2980577bcc",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-robotframework--robotframework-b97f4dffb4e5c798:latest",
+    "present": true,
+    "id": "sha256:92f54f3743a26fde2481f061dbd6df5b374644eb3f3675a0c41fa7136a4db914",
+    "size": 2047819299,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "b97f4dffb4e5c7983af49204b7f13ab334c352f2d7539e8e3de22e66388f5719",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-scikit-image--scikit-image-a8561f4ba36dddf8:latest",
+    "present": true,
+    "id": "sha256:6eefa1f7158dfc77046ed83dfc9d900e79b958072e44663107225811f308770c",
+    "size": 3095044321,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.12-noble-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.12-noble-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "91391a167a48886790b6db991b72bf14e4040ca6508ba53b5c81b4dea50d636b",
+      "com.feature-factory.stage2.image-id": "python:3.12-noble-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.12-noble-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "a8561f4ba36dddf80efe616d938ce90cfd8119d56c9d82e1ee505cc200937588",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "24.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-streamlink--streamlink-8e7e7bc9ec7da0be:latest",
+    "present": true,
+    "id": "sha256:7985e7bd73c184deae7c3f485bb3124e49b841ca8d84dd33a66bdb318b2b5b61",
+    "size": 1919536651,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "8e7e7bc9ec7da0be9aab6fa7fa77f7d9bd76ae1382f2d8534f833fee34472c75",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-tornadoweb--tornado-c763275e25dd32f9:latest",
+    "present": true,
+    "id": "sha256:19d48a7f65e2ee0e8250b4bc2b5dfb9ad0c68604bc8e8493291f0c3e3a918fca",
+    "size": 2068545089,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "c763275e25dd32f9eeb9b36b59ee06de13ed610e203a1b67578a998ff5c197a1",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-wireservice--csvkit-a4c49764dc071a64:latest",
+    "present": true,
+    "id": "sha256:a556906bb50c764631bbdd1b7d26db2e77d033bbee8b1027fa7d59e2348dfe3f",
+    "size": 1962150357,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.10-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.10-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "c7b6875771bff293ec3fba45a9590784ebc26b9e850149c9eb90dd655f565f22",
+      "com.feature-factory.stage2.image-id": "python:3.10-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.10-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "a4c49764dc071a64af55cd41ce9c563bb9858dc86c2ca3619ef8c44ef404d5aa",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "belta-retire-base-zulko--moviepy-2d95bdc2c4e8e38e:latest",
+    "present": true,
+    "id": "sha256:0118c0f95210c7ab2a75a13b6b55aa3f9f98ce10e9e5784ece882c0c194a951f",
+    "size": 3034646842,
+    "labels": {
+      "com.feature-factory.stage2.asset-key": "python:3.11-jammy-builder::cn",
+      "com.feature-factory.stage2.asset-path": "base_images/python-3.11-jammy-cn.Dockerfile",
+      "com.feature-factory.stage2.dockerfile-sha256": "205f3c94c67fd3993d9393296f947a37af26e1b8943ed8d32200401a8aff95eb",
+      "com.feature-factory.stage2.image-id": "python:3.11-jammy-builder",
+      "com.feature-factory.stage2.image-ref": "feature-factory/python:3.11-jammy-builder-cn",
+      "com.feature-factory.stage2.kind": "base-image",
+      "com.feature-factory.stage2.network-profile": "cn",
+      "com.feature-factory.stage2.platform": "linux/amd64",
+      "org.belta.build-context-sha256": "2d95bdc2c4e8e38e8aa6bde791edda10c965cefd3178001bb5526529da427c73",
+      "org.belta.managed": "true",
+      "org.belta.stage": "retire-base",
+      "org.opencontainers.image.version": "22.04"
+    }
+  },
+  {
+    "tag": "harbor-prebuilt:harbor-docker-egress-control-sidecar--1e410634994d7f8c",
+    "id": "sha256:e52675be85125d5729b6668891170cef6fe6c2f8e85e47b3a091f0d5e607ea13",
+    "size": 52057329,
+    "labels": {}
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "title": "Unexpected behavior near the affected feature boundary",
+  "fields": {
+    "content": "The public workflow no longer produces its established result. A useful place to investigate is the boundary where the public input is converted into that result, including the state immediately before and after the transition."
+  }
+}

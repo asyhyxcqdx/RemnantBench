@@ -1,0 +1,60 @@
+.codex
+
+# Local environment and secrets.
+.env
+.env.*
+!.env.example
+!.env.template
+.venv/
+
+# Python and tool caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.hypothesis/
+.uv-cache/
+.cache/
+.tox/
+.nox/
+
+# Build, packaging, and coverage artifacts.
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Local runtime data, generated DataPools, and temporary workspaces.
+data/
+data-pools/
+tmp/
+temp/
+logs/
+outputs/
+artifacts/
+runs/
+checkpoints/
+.stage3/
+.stage3_runtime/
+.feature_factory_openhands_tools/
+
+# Local standalone checkout; intentionally not tracked by FeatureFactory.
+/rllm-dev/
+
+# Local databases and logs.
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db-journal
+*.log
+
+# OS/editor scratch.
+.DS_Store
+_notebook.md

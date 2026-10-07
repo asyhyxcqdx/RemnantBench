@@ -1,0 +1,41 @@
+{
+  "sources": [
+    {
+      "path": "belta",
+      "commit": "f47ea9cf2ecf6168ab7c7280a7c1b25934c2b7aa",
+      "origin": "https://github.com/asyhyxcqdx/belta.git",
+      "file_count": 21
+    },
+    {
+      "path": "FeatureFactory",
+      "commit": "f4eb149b52ac63e8ce81571b180474e595a82711",
+      "origin": "https://github.com/potatoQi/FeatureFactory.git",
+      "file_count": 162
+    },
+    {
+      "path": "FeatureFactory/software-agent-sdk",
+      "commit": "f73d1d23b740351f50f33fc63cfd8212c765eb57",
+      "origin": "git@github.com:potatoQi/software-agent-sdk.git",
+      "file_count": 1092
+    },
+    {
+      "path": "FeatureFactory/harbor",
+      "commit": "5700d54caef6093b4b024863c51130da6f9b9306",
+      "origin": "git@github.com:potatoQi/harbor.git",
+      "file_count": 2154
+    },
+    {
+      "path": "harbor",
+      "commit": "d2778258c5a6003f71fa133a34331ff65e894f53",
+      "origin": "https://github.com/asyhyxcqdx/harbor.git",
+      "file_count": 3063
+    }
+  ],
+  "layout": "Source snapshots, with required submodules materialized; Git history and credentials are excluded.",
+  "distribution_changes": [
+    "belta/uv.lock",
+    "FeatureFactory/.gitmodules",
+    "harbor/adapters/belta/run_harbor.py",
+    "harbor/tests/unit/adapters/test_belta_runner.py"
+  ]
+}

@@ -1,0 +1,33 @@
+[project]
+name = "belta"
+version = "0.1.0"
+description = "Belta benchmark construction tooling"
+requires-python = ">=3.13"
+dependencies = [
+    "feature-factory",
+    "httpx>=0.28.0",
+    "psycopg[binary]>=3.2.0",
+    "pydantic>=2.11.0",
+    "pydantic-settings>=2.8.0",
+    "pyyaml>=6.0.0",
+    "sqlalchemy>=2.0.0",
+]
+
+[tool.uv.sources]
+feature-factory = { path = "../FeatureFactory", editable = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[project.scripts]
+belta = "belta.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

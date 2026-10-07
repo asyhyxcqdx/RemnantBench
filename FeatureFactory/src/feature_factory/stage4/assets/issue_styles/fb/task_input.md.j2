@@ -1,0 +1,54 @@
+## Task
+{{ fields.task_statement }}
+
+**NOTE**:
+- The `{{ repository.name }}` code repository is available under `{{ workspace_root }}/`. Complete the task in this repository. All changes must remain inside this codebase so they can be discovered and evaluated.
+- The task environment and repository dependencies are already prepared. Focus on implementing the requested code.
+- **CRITICAL REQUIREMENT**: Your implementation **MUST** match the exact interfaces shown in the **Interface Descriptions** below.
+
+Your final deliverable should be code under the `{{ workspace_root }}/` directory. The result will be evaluated for correctness, integrity, and precision.
+
+The final structure is like below.
+```
+{{ workspace_root }}             # all work must be placed in this codebase
+├── dir1/
+│   ├── interface_file
+│   ├── ...
+├── dir2/
+```
+
+## Interface Descriptions
+
+### Clarification
+The **Interface Description** describes the required public interfaces, their behavior, and their input and output formats.
+
+Each interface entry follows this language-independent shape:
+
+<Describe the public behavior, inputs, outputs, and observable constraints.>
+
+Path: `{{ workspace_root }}/<repository-relative-path>`
+```
+<public interface declaration or signature>
+<your code>
+```
+The `Path` value declares where the interface must be implemented. Generate the described public interface under the specified path.
+
+In addition to the path requirement, you may modify any repository file needed to complete the task. Be careful when modifying or deleting generic functionality, because unrelated changes may break existing behavior.
+
+Additional libraries may sometimes be required. You may choose and install dependencies when necessary, but you **MUST** fulfill the input/output formats described by every interface.
+
+There may be more than one **Interface Description**. You should match all **Interface Description {n}** entries.
+{% for interface in fields.interfaces %}
+
+### Interface Description {{ loop.index }}
+Below is **Interface Description {{ loop.index }}**
+
+{{ interface.description }}
+
+Path: `{{ workspace_root }}/{{ interface.path }}`
+```
+{{ interface.code }}
+```
+{% endfor %}
+
+Remember, **the interface template above is extremely important**. Generate the public interfaces strictly according to the specified requirements. Incorrect naming or input/output formats can cause the implementation to fail evaluation.

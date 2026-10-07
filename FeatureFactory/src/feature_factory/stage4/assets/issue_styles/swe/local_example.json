@@ -1,0 +1,6 @@
+{
+  "title": "Unexpected behavior in the affected public workflow",
+  "fields": {
+    "content": "I ran into a regression in the normal public workflow. The result no longer matches the behavior exposed by the repository, although the same usage worked previously. I would expect the established behavior to remain consistent without changing unrelated functionality."
+  }
+}

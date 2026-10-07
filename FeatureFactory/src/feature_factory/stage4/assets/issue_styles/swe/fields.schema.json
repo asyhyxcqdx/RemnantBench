@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "content"
+  ],
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "A natural issue report grounded in public symptoms and workflows. The reference patch is confidential evidence for understanding the problem, not a source for internal root-cause claims, missing helper or branch lists, changed constants or operators, or a concrete repair strategy.",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  }
+}

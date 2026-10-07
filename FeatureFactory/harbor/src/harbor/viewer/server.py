@@ -1,0 +1,1916 @@
+"""FastAPI server for the Harbor Viewer."""
+
+import json
+import math
+import shutil
+from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
+from typing import Any, TypedDict
+from urllib.parse import quote
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from harbor.models.job.config import (
+    JobConfig,
+)
+from harbor.utils.env import REDACT_SECRETS_CONTEXT
+from harbor.report import REPORT_FILENAME
+from harbor.models.trial.result import TrialResult
+from harbor.viewer.models import (
+    ComparisonAgentModel,
+    ComparisonCell,
+    ComparisonGridData,
+    ComparisonTask,
+    EvalSummary,
+    FileTail,
+    FileInfo,
+    FilterOption,
+    JobFilters,
+    JobSummary,
+    PaginatedResponse,
+    TaskDefinitionDetail,
+    TaskDefinitionFilters,
+    TaskDefinitionSummary,
+    TaskFilters,
+    TaskSummary,
+    TrialSummary,
+    TrialStatusSummary,
+)
+from harbor.viewer.scanner import JobScanner
+from harbor.viewer.task_scanner import TaskDefinitionScanner
+
+
+class SummarizeRequest(BaseModel):
+    """Request body for job summarization."""
+
+    model: str = "haiku"
+    n_concurrent: int = 32
+    only_failed: bool = False
+    overwrite: bool = False
+
+
+class TrialSummarizeRequest(BaseModel):
+    """Request body for single trial summarization."""
+
+    model: str = "haiku"
+
+
+class ViewerPreferenceRequest(BaseModel):
+    """Viewer preference payload stored for the lifetime of this server process."""
+
+    value: Any
+
+
+class TaskGroupStats(TypedDict):
+    """Stats accumulated for a task group."""
+
+    n_trials: int
+    n_completed: int
+    n_running: int
+    n_errors: int
+    exception_types: set[str]
+    running_phases: set[str]
+    total_reward: float
+    reward_count: int
+    total_duration_ms: float
+    duration_count: int
+    latest_started_at: datetime | None
+
+
+# Maximum file size to serve (1MB)
+MAX_FILE_SIZE = 1024 * 1024
+
+
+def _build_live_openhands_trajectory(agent_dir: Path) -> dict[str, Any] | None:
+    """Best-effort ATIF preview from OpenHands event files during a live run."""
+    sessions_dir = agent_dir / "sessions"
+    if not sessions_dir.exists():
+        return None
+
+    session_dirs = sorted(path for path in sessions_dir.iterdir() if path.is_dir())
+    if not session_dirs:
+        return None
+
+    # OpenHands normally has one session. If a retry/resume leaves more than one,
+    # use the newest session for the live preview.
+    session_dir = max(session_dirs, key=lambda path: path.stat().st_mtime)
+    events_dir = session_dir / "events"
+    if not events_dir.exists():
+        return None
+
+    try:
+        from harbor.agents.installed.openhands import OpenHands
+
+        agent = OpenHands(logs_dir=agent_dir)
+        trajectory = agent._convert_events_to_trajectory(events_dir)
+        if trajectory is None:
+            return None
+        return trajectory.to_json_dict()
+    except Exception:
+        return None
+
+
+def _timestamp_sort_value(value: datetime | None) -> float:
+    """Return a comparable timestamp, keeping missing dates sortable."""
+    if value is None:
+        return float("-inf")
+    return value.timestamp()
+
+
+def create_app(
+    folder: Path,
+    mode: str = "jobs",
+    static_dir: Path | None = None,
+) -> FastAPI:
+    """Create the FastAPI application with routes configured for the given directory.
+
+    Args:
+        folder: Directory containing job/trial data or task definitions
+        mode: "jobs" for job viewer, "tasks" for task definition browser
+        static_dir: Optional directory containing static viewer files (index.html, assets/)
+    """
+    # Store cleanup callbacks for lifespan
+    cleanup_callbacks: list = []
+    viewer_preferences: dict[str, Any] = {}
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        for callback in cleanup_callbacks:
+            await callback()
+
+    app = FastAPI(
+        title="Harbor Viewer",
+        description="API for browsing Harbor jobs and trials",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+
+    # Allow CORS for local development
+    app.add_middleware(
+        CORSMiddleware,  # type: ignore[arg-type]
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/api/health")
+    def health_check() -> dict[str, str]:
+        """Health check endpoint."""
+        return {"status": "ok"}
+
+    @app.get("/api/config")
+    def get_config() -> dict[str, str]:
+        """Get viewer configuration."""
+        return {"folder": str(folder), "mode": mode}
+
+    @app.get("/api/preferences/{key:path}")
+    def get_preference(key: str) -> dict[str, Any]:
+        """Get an in-memory viewer preference.
+
+        Preferences are intentionally process-local: they survive client-side
+        navigation, but disappear when the viewer backend exits.
+        """
+        return {"value": viewer_preferences.get(key)}
+
+    @app.post("/api/preferences/{key:path}")
+    def set_preference(key: str, request: ViewerPreferenceRequest) -> dict[str, Any]:
+        """Set an in-memory viewer preference."""
+        viewer_preferences[key] = request.value
+        return {"value": request.value}
+
+    if mode == "tasks":
+        _register_task_endpoints(app, folder, cleanup_callbacks)
+    else:
+        _register_job_endpoints(app, folder)
+
+    # Serve static viewer files if provided
+    if static_dir and static_dir.exists():
+        assets_dir = static_dir / "assets"
+        if assets_dir.exists():
+            app.mount(
+                "/assets", StaticFiles(directory=assets_dir), name="static_assets"
+            )
+
+        fonts_dir = static_dir / "fonts"
+        if fonts_dir.exists():
+            app.mount("/fonts", StaticFiles(directory=fonts_dir), name="static_fonts")
+
+        @app.get("/favicon.ico")
+        def favicon() -> FileResponse:
+            """Serve favicon."""
+            return FileResponse(static_dir / "favicon.ico")
+
+        @app.get("/{path:path}")
+        def serve_spa(path: str) -> FileResponse:
+            """Serve the SPA for all non-API routes."""
+            return FileResponse(static_dir / "index.html")
+
+    return app
+
+
+def _register_task_endpoints(
+    app: FastAPI, tasks_dir: Path, cleanup_callbacks: list
+) -> None:
+    """Register API endpoints for task definition browsing."""
+    from collections import Counter
+
+    from harbor.viewer.chat import ChatSessionManager, stream_chat_response
+
+    task_scanner = TaskDefinitionScanner(tasks_dir)
+    chat_manager = ChatSessionManager(tasks_dir)
+    cleanup_callbacks.append(chat_manager.close_all)
+
+    resolved_tasks_dir = tasks_dir.resolve()
+
+    def _validate_task_name(name: str) -> Path:
+        """Validate task name and return the resolved task directory."""
+        task_dir = (tasks_dir / name).resolve()
+        if resolved_tasks_dir not in task_dir.parents:
+            raise HTTPException(status_code=400, detail="Invalid task name")
+        return task_dir
+
+    def _get_all_task_definition_summaries() -> list[TaskDefinitionSummary]:
+        """Build summaries for all task definitions."""
+        task_names = task_scanner.list_tasks()
+        summaries = []
+        for name in task_names:
+            config = task_scanner.get_task_config(name)
+            paths_info = task_scanner.get_task_paths_info(name)
+            if config:
+                summaries.append(
+                    TaskDefinitionSummary(
+                        name=name,
+                        version=config.schema_version,
+                        source=config.source,
+                        metadata=config.metadata,
+                        has_instruction=paths_info["has_instruction"],
+                        has_environment=paths_info["has_environment"],
+                        has_tests=paths_info["has_tests"],
+                        has_solution=paths_info["has_solution"],
+                        agent_timeout_sec=config.agent.timeout_sec,
+                        verifier_timeout_sec=config.verifier.timeout_sec,
+                        os=config.environment.os.value,
+                        cpus=config.environment.cpus,
+                        memory_mb=config.environment.memory_mb,
+                        storage_mb=config.environment.storage_mb,
+                        gpus=config.environment.gpus,
+                    )
+                )
+            else:
+                summaries.append(
+                    TaskDefinitionSummary(
+                        name=name,
+                        has_instruction=paths_info["has_instruction"],
+                        has_environment=paths_info["has_environment"],
+                        has_tests=paths_info["has_tests"],
+                        has_solution=paths_info["has_solution"],
+                    )
+                )
+        return summaries
+
+    @app.get("/api/task-definitions/filters", response_model=TaskDefinitionFilters)
+    def get_task_definition_filters() -> TaskDefinitionFilters:
+        """Get available filter options for task definitions."""
+        summaries = _get_all_task_definition_summaries()
+
+        difficulty_counts: Counter[str] = Counter()
+        category_counts: Counter[str] = Counter()
+        tag_counts: Counter[str] = Counter()
+
+        for s in summaries:
+            meta = s.metadata
+            if "difficulty" in meta and isinstance(meta["difficulty"], str):
+                difficulty_counts[meta["difficulty"]] += 1
+            if "category" in meta and isinstance(meta["category"], str):
+                category_counts[meta["category"]] += 1
+            if "tags" in meta and isinstance(meta["tags"], list):
+                for tag in meta["tags"]:
+                    if isinstance(tag, str):
+                        tag_counts[tag] += 1
+
+        return TaskDefinitionFilters(
+            difficulties=[
+                FilterOption(value=v, count=c)
+                for v, c in sorted(difficulty_counts.items())
+            ],
+            categories=[
+                FilterOption(value=v, count=c)
+                for v, c in sorted(category_counts.items())
+            ],
+            tags=[
+                FilterOption(value=v, count=c) for v, c in sorted(tag_counts.items())
+            ],
+        )
+
+    @app.get(
+        "/api/task-definitions",
+        response_model=PaginatedResponse[TaskDefinitionSummary],
+    )
+    def list_task_definitions(
+        page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+        page_size: int = Query(
+            default=100, ge=1, le=100, description="Number of items per page"
+        ),
+        q: str | None = Query(default=None, description="Search query"),
+        difficulty: list[str] = Query(default=[], description="Filter by difficulty"),
+        category: list[str] = Query(default=[], description="Filter by category"),
+        tag: list[str] = Query(default=[], description="Filter by tags"),
+    ) -> PaginatedResponse[TaskDefinitionSummary]:
+        """List all task definitions with summary information."""
+        summaries = _get_all_task_definition_summaries()
+
+        # Search filter
+        if q:
+            query = q.lower()
+            summaries = [
+                s
+                for s in summaries
+                if query in s.name.lower()
+                or (s.source and query in s.source.lower())
+                or any(query in str(v).lower() for v in s.metadata.values())
+            ]
+
+        # Difficulty filter
+        if difficulty:
+            summaries = [
+                s for s in summaries if s.metadata.get("difficulty") in difficulty
+            ]
+
+        # Category filter
+        if category:
+            summaries = [s for s in summaries if s.metadata.get("category") in category]
+
+        # Tag filter
+        if tag:
+            summaries = [
+                s
+                for s in summaries
+                if any(t in s.metadata.get("tags", []) for t in tag)
+            ]
+
+        # Paginate
+        total = len(summaries)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_summaries = summaries[start_idx:end_idx]
+
+        return PaginatedResponse(
+            items=page_summaries,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+    @app.get(
+        "/api/task-definitions/{name}",
+        response_model=TaskDefinitionDetail,
+    )
+    def get_task_definition(name: str) -> TaskDefinitionDetail:
+        """Get full detail for a task definition."""
+        task_dir = _validate_task_name(name)
+        if not task_dir.exists() or not (task_dir / "task.toml").exists():
+            raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+
+        config = task_scanner.get_task_config(name)
+        instruction = task_scanner.get_instruction(name)
+        paths_info = task_scanner.get_task_paths_info(name)
+
+        return TaskDefinitionDetail(
+            name=name,
+            task_dir=str(task_dir.resolve()),
+            config=(
+                config.model_dump(mode="json", context=REDACT_SECRETS_CONTEXT)
+                if config
+                else {}
+            ),
+            instruction=instruction,
+            has_instruction=paths_info["has_instruction"],
+            has_environment=paths_info["has_environment"],
+            has_tests=paths_info["has_tests"],
+            has_solution=paths_info["has_solution"],
+        )
+
+    @app.get("/api/task-definitions/{name}/files")
+    def list_task_definition_files(name: str) -> list[FileInfo]:
+        """List all files in a task definition directory."""
+        task_dir = _validate_task_name(name)
+        if not task_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+
+        raw_files = task_scanner.list_files(name)
+        return [
+            FileInfo(
+                path=f["path"],  # type: ignore[arg-type]
+                name=f["name"],  # type: ignore[arg-type]
+                is_dir=f["is_dir"],  # type: ignore[arg-type]
+                size=f["size"],  # type: ignore[arg-type]
+            )
+            for f in raw_files
+        ]
+
+    @app.get(
+        "/api/task-definitions/{name}/files/{file_path:path}",
+        response_model=None,
+    )
+    def get_task_definition_file(
+        name: str, file_path: str
+    ) -> PlainTextResponse | FileResponse:
+        """Get content of a file in a task definition directory."""
+        task_dir = _validate_task_name(name)
+        if not task_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+
+        # Resolve the path and ensure it's within the task directory
+        try:
+            full_path = (task_dir / file_path).resolve()
+            if (
+                task_dir.resolve() not in full_path.parents
+                and full_path != task_dir.resolve()
+            ):
+                raise HTTPException(status_code=403, detail="Access denied")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid file path")
+
+        if not full_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if full_path.is_dir():
+            raise HTTPException(status_code=400, detail="Cannot read directory")
+
+        def _format_size(size_bytes: int) -> str:
+            if size_bytes < 1024:
+                return f"{size_bytes} bytes"
+            elif size_bytes < 1024 * 1024:
+                return f"{size_bytes / 1024:.1f} KB"
+            else:
+                return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+        file_size = full_path.stat().st_size
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large: {_format_size(file_size)} (max {_format_size(MAX_FILE_SIZE)})",
+            )
+
+        image_extensions = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+        }
+        suffix = full_path.suffix.lower()
+        if suffix in image_extensions:
+            return FileResponse(
+                path=full_path,
+                media_type=image_extensions[suffix],
+                filename=full_path.name,
+            )
+
+        try:
+            content = full_path.read_text()
+            return PlainTextResponse(content)
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=415, detail="File is binary and cannot be displayed"
+            )
+
+    class ChatRequest(BaseModel):
+        message: str
+
+    @app.post("/api/task-definitions/{name}/chat")
+    async def chat_with_task(name: str, request: ChatRequest) -> StreamingResponse:
+        """Chat with Claude about a task definition."""
+        task_dir = _validate_task_name(name)
+        if not task_dir.exists() or not (task_dir / "task.toml").exists():
+            raise HTTPException(status_code=404, detail=f"Task '{name}' not found")
+
+        try:
+            session = await chat_manager.get_or_create(name)
+        except Exception as e:
+            error_name = type(e).__name__
+            if error_name == "CLINotFoundError":
+                raise HTTPException(
+                    status_code=503,
+                    detail="Claude CLI is not installed. Install it to use chat.",
+                )
+            raise HTTPException(
+                status_code=500, detail=f"Failed to start chat session: {str(e)}"
+            )
+
+        return StreamingResponse(
+            stream_chat_response(session, request.message),
+            media_type="text/event-stream",
+        )
+
+    @app.delete("/api/task-definitions/{name}/chat")
+    async def reset_chat(name: str) -> dict[str, str]:
+        """Reset (close) a chat session for a task."""
+        await chat_manager.close(name)
+        return {"status": "ok"}
+
+
+def _register_job_endpoints(app: FastAPI, jobs_dir: Path) -> None:
+    """Register API endpoints for job browsing."""
+
+    scanner = JobScanner(jobs_dir)
+    resolved_jobs_dir = jobs_dir.resolve()
+
+    def _validate_job_path(job_name: str) -> Path:
+        """Validate job name and return the resolved job directory."""
+        job_dir = (jobs_dir / job_name).resolve()
+        if resolved_jobs_dir not in job_dir.parents:
+            raise HTTPException(status_code=400, detail="Invalid job name")
+        return job_dir
+
+    def _validate_trial_path(job_name: str, trial_name: str) -> Path:
+        """Validate trial path and return the resolved trial directory."""
+        job_dir = _validate_job_path(job_name)
+        trial_dir = (job_dir / trial_name).resolve()
+        if job_dir not in trial_dir.parents:
+            raise HTTPException(status_code=400, detail="Invalid trial name")
+        return trial_dir
+
+    def _resolve_step_root(trial_dir: Path, step: str | None) -> Path:
+        """Return the directory to read step-scoped files from.
+
+        When ``step`` is set, resolves to ``trial_dir/steps/{step}`` after
+        validating the path stays inside the trial directory. When it's
+        ``None``, returns ``trial_dir`` unchanged.
+        """
+        if step is None:
+            return trial_dir
+        trial_resolved = trial_dir.resolve()
+        step_dir = (trial_dir / "steps" / step).resolve()
+        if trial_resolved not in step_dir.parents:
+            raise HTTPException(status_code=400, detail="Invalid step name")
+        if not step_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Step '{step}' not found")
+        return step_dir
+
+    def _get_trial_status_phase(
+        job_name: str, trial_name: str, result: TrialResult
+    ) -> tuple[str, str | None]:
+        """Return normalized live status fields for summaries."""
+        live_status = scanner.get_trial_status(job_name, trial_name)
+        if result.finished_at is not None:
+            if result.exception_info is not None:
+                if result.exception_info.exception_type == "CancelledError":
+                    return "canceled", live_status.phase if live_status else None
+                return "failed", live_status.phase if live_status else None
+            return "completed", live_status.phase if live_status else None
+        if live_status is not None:
+            return live_status.status, live_status.phase
+        return "running", None
+
+    def _get_all_job_summaries() -> list[JobSummary]:
+        """Get all job summaries (used by both list_jobs and get_job_filters)."""
+        job_names = scanner.list_jobs()
+        summaries = []
+
+        for name in job_names:
+            result = scanner.get_job_result(name)
+            config = scanner.get_job_config(name)
+            trial_names = scanner.list_trials(name)
+            report_url = (
+                f"/api/jobs/{quote(name, safe='')}/report"
+                if (jobs_dir / name / REPORT_FILENAME).exists()
+                else None
+            )
+
+            # Extract unique agents, providers, models, datasets, and environment type from config
+            agents: list[str] = []
+            providers: list[str] = []
+            models: list[str] = []
+            datasets: list[str] = []
+            environment_type: str | None = None
+            if config:
+                agents = sorted(
+                    set(agent.name for agent in config.agents if agent.name is not None)
+                )
+                # Extract dataset names
+                for ds in config.datasets:
+                    if ds.is_local():
+                        assert ds.path is not None
+                        datasets.append(ds.path.name)
+                    elif ds.is_package() or ds.is_registry():
+                        assert ds.name is not None
+                        datasets.append(ds.name)
+                datasets = sorted(set(datasets))
+                # Extract provider from model_name (format: "provider/model")
+                for agent in config.agents:
+                    if agent.model_name:
+                        parts = agent.model_name.split("/", 1)
+                        if len(parts) == 2:
+                            providers.append(parts[0])
+                            models.append(parts[1])
+                        else:
+                            models.append(agent.model_name)
+                providers = sorted(set(providers))
+                models = sorted(set(models))
+                if config.environment.type:
+                    environment_type = config.environment.type.value
+
+            if result:
+                running_trials = 0
+                running_phases: list[str] = []
+                for trial_name in trial_names:
+                    trial_result = scanner.get_trial_result_or_status(name, trial_name)
+                    if trial_result is None or trial_result.finished_at is not None:
+                        continue
+                    running_trials += 1
+                    live_status = scanner.get_trial_status(name, trial_name)
+                    if live_status and live_status.phase:
+                        running_phases.append(live_status.phase)
+                if result.finished_at is not None:
+                    job_status = "completed"
+                elif running_trials > 0:
+                    job_status = "running"
+                else:
+                    job_status = "pending"
+                # Extract evals from stats
+                evals = {
+                    key: EvalSummary(metrics=eval_stats.metrics)
+                    for key, eval_stats in result.stats.evals.items()
+                    if eval_stats.metrics
+                }
+                summaries.append(
+                    JobSummary(
+                        name=name,
+                        status=job_status,
+                        phase=running_phases[0] if running_phases else None,
+                        id=result.id,
+                        started_at=result.started_at,
+                        finished_at=result.finished_at,
+                        n_total_trials=result.n_total_trials,
+                        n_completed_trials=result.stats.n_trials,
+                        n_running_trials=running_trials,
+                        n_errors=result.stats.n_errors,
+                        datasets=datasets,
+                        agents=agents,
+                        providers=providers,
+                        models=models,
+                        environment_type=environment_type,
+                        report_url=report_url,
+                        evals=evals,
+                    )
+                )
+            else:
+                trial_results = [
+                    scanner.get_trial_result_or_status(name, trial_name)
+                    for trial_name in trial_names
+                ]
+                trial_results = [r for r in trial_results if r is not None]
+                n_completed = sum(1 for r in trial_results if r.finished_at)
+                n_running = sum(1 for r in trial_results if not r.finished_at)
+                n_errors = sum(1 for r in trial_results if r.exception_info)
+                started_at = min(
+                    (r.started_at for r in trial_results if r.started_at),
+                    default=None,
+                )
+                phases = []
+                for trial_name in trial_names:
+                    live_status = scanner.get_trial_status(name, trial_name)
+                    if live_status and live_status.phase:
+                        phases.append(live_status.phase)
+                summaries.append(
+                    JobSummary(
+                        name=name,
+                        status="running" if n_running else "unknown",
+                        phase=phases[0] if phases else None,
+                        started_at=started_at,
+                        n_total_trials=len(trial_names),
+                        n_completed_trials=n_completed,
+                        n_running_trials=n_running,
+                        n_errors=n_errors,
+                        datasets=datasets,
+                        agents=agents,
+                        providers=providers,
+                        models=models,
+                        environment_type=environment_type,
+                        report_url=report_url,
+                    )
+                )
+
+        # Sort by started_at descending (most recent first), jobs without started_at go last
+        summaries.sort(
+            key=lambda s: (s.started_at is not None, s.started_at),
+            reverse=True,
+        )
+        return summaries
+
+    @app.get("/api/jobs/filters", response_model=JobFilters)
+    def get_job_filters() -> JobFilters:
+        """Get available filter options for jobs list."""
+        from collections import Counter
+
+        summaries = _get_all_job_summaries()
+
+        # Count occurrences of agents, providers, and models
+        agent_counts: Counter[str] = Counter()
+        provider_counts: Counter[str] = Counter()
+        model_counts: Counter[str] = Counter()
+
+        for summary in summaries:
+            for agent in summary.agents:
+                agent_counts[agent] += 1
+            for provider in summary.providers:
+                provider_counts[provider] += 1
+            for model in summary.models:
+                model_counts[model] += 1
+
+        return JobFilters(
+            agents=[
+                FilterOption(value=v, count=c) for v, c in sorted(agent_counts.items())
+            ],
+            providers=[
+                FilterOption(value=v, count=c)
+                for v, c in sorted(provider_counts.items())
+            ],
+            models=[
+                FilterOption(value=v, count=c) for v, c in sorted(model_counts.items())
+            ],
+        )
+
+    @app.get("/api/jobs", response_model=PaginatedResponse[JobSummary])
+    def list_jobs(
+        page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+        page_size: int = Query(
+            default=100, ge=1, le=100, description="Number of items per page"
+        ),
+        q: str | None = Query(default=None, description="Search query"),
+        agent: list[str] = Query(default=[], description="Filter by agent names"),
+        provider: list[str] = Query(default=[], description="Filter by provider names"),
+        model: list[str] = Query(default=[], description="Filter by model names"),
+        date: list[str] = Query(
+            default=[],
+            description="Filter by date ranges (today, week, month)",
+        ),
+    ) -> PaginatedResponse[JobSummary]:
+        """List all jobs with summary information."""
+        from datetime import datetime, timedelta
+
+        summaries = _get_all_job_summaries()
+
+        # Filter by search query
+        if q:
+            query = q.lower()
+            summaries = [
+                s
+                for s in summaries
+                if query in s.name.lower()
+                or any(query in agent_name.lower() for agent_name in s.agents)
+                or any(query in provider_name.lower() for provider_name in s.providers)
+                or any(query in model_name.lower() for model_name in s.models)
+            ]
+
+        # Filter by agents (OR within agents)
+        if agent:
+            summaries = [s for s in summaries if any(a in s.agents for a in agent)]
+
+        # Filter by providers (OR within providers)
+        if provider:
+            summaries = [
+                s for s in summaries if any(p in s.providers for p in provider)
+            ]
+
+        # Filter by models (OR within models)
+        if model:
+            summaries = [s for s in summaries if any(m in s.models for m in model)]
+
+        # Filter by date (OR within dates - use the most permissive)
+        if date:
+            now = datetime.now()
+            cutoffs = []
+            for d in date:
+                if d == "today":
+                    cutoffs.append(now - timedelta(days=1))
+                elif d == "week":
+                    cutoffs.append(now - timedelta(weeks=1))
+                elif d == "month":
+                    cutoffs.append(now - timedelta(days=30))
+
+            if cutoffs:
+                # Use the earliest cutoff (most permissive)
+                cutoff = min(cutoffs)
+                summaries = [
+                    s
+                    for s in summaries
+                    if s.started_at is not None
+                    and s.started_at.replace(tzinfo=None) >= cutoff
+                ]
+
+        # Paginate
+        total = len(summaries)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_summaries = summaries[start_idx:end_idx]
+
+        return PaginatedResponse(
+            items=page_summaries,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+    @app.get("/api/jobs/{job_name}")
+    def get_job(job_name: str) -> dict[str, Any]:
+        """Get full job result details."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        result = scanner.get_job_result(job_name)
+        if result is None:
+            # Return minimal info for jobs without result.json (incomplete jobs)
+            # Count trials from subdirectories
+            n_trials = sum(1 for d in job_dir.iterdir() if d.is_dir())
+            return {
+                "id": job_name,
+                "started_at": None,
+                "finished_at": None,
+                "n_total_trials": n_trials,
+                "stats": {"n_trials": 0, "n_errors": 0},
+                "job_uri": job_dir.resolve().as_uri(),
+            }
+
+        # Convert to dict and add job_uri
+        result_dict = result.model_dump(
+            mode="json", context=REDACT_SECRETS_CONTEXT
+        )
+        result_dict["job_uri"] = job_dir.resolve().as_uri()
+        return result_dict
+
+    @app.get("/api/jobs/{job_name}/report")
+    def get_job_report(job_name: str) -> FileResponse:
+        """Serve the generated HTML report for a job."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        report_path = job_dir / REPORT_FILENAME
+        if not report_path.exists():
+            raise HTTPException(
+                status_code=404, detail=f"Report for job '{job_name}' not found"
+            )
+        return FileResponse(report_path, media_type="text/html")
+
+    @app.get("/api/jobs/{job_name}/summary")
+    def get_job_summary(job_name: str) -> dict[str, str | None]:
+        """Get job analysis (analysis.md file at job root)."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        analysis_path = job_dir / "analysis.md"
+        if analysis_path.exists():
+            try:
+                return {"summary": analysis_path.read_text()}
+            except Exception:
+                return {"summary": "[Error reading file]"}
+        return {"summary": None}
+
+    @app.get("/api/jobs/{job_name}/analysis")
+    def get_job_analysis(job_name: str) -> dict[str, Any]:
+        """Get full structured analysis (analysis.json) for a job."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        analysis_path = job_dir / "analysis.json"
+        if analysis_path.exists():
+            try:
+                return json.loads(analysis_path.read_text())
+            except Exception:
+                raise HTTPException(
+                    status_code=500, detail="Error reading analysis.json"
+                )
+        return {}
+
+    @app.post("/api/jobs/{job_name}/summarize")
+    async def summarize_job(
+        job_name: str, request: SummarizeRequest
+    ) -> dict[str, str | int | bool | None]:
+        """Generate an analysis for a job using harbor analyze."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        from harbor.analyze.analyzer import Analyzer
+
+        # Map only_failed to filter_passing
+        filter_passing: bool | None = None
+        if request.only_failed:
+            filter_passing = False
+
+        # Respect overwrite flag — return existing analysis if available
+        analysis_path = job_dir / "analysis.md"
+        if not request.overwrite and analysis_path.exists():
+            try:
+                return {
+                    "summary": analysis_path.read_text(),
+                    "n_trials_summarized": 0,
+                    "job_summary_created": False,
+                }
+            except Exception:
+                pass  # Fall through to re-analyze
+
+        analyzer = Analyzer(
+            model=request.model,
+            n_concurrent=request.n_concurrent,
+        )
+
+        try:
+            result, _failed = await analyzer.analyze_job(
+                job_dir, filter_passing=filter_passing
+            )
+        except ValueError as e:
+            if "trial directories found" in str(e):
+                return {
+                    "summary": None,
+                    "n_trials_summarized": 0,
+                    "job_summary_created": False,
+                }
+            raise
+
+        return {
+            "summary": result.job_summary,
+            "n_trials_summarized": len(result.trials),
+            "job_summary_created": True,
+        }
+
+    @app.delete("/api/jobs/{job_name}")
+    def delete_job(job_name: str) -> dict[str, str]:
+        """Delete a job and all its trials."""
+        job_dir = _validate_job_path(job_name)
+        if not job_dir.exists():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        try:
+            shutil.rmtree(job_dir)
+            return {"status": "ok", "message": f"Job '{job_name}' deleted"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to delete job: {str(e)}"
+            )
+
+    @app.get("/api/compare", response_model=ComparisonGridData)
+    def get_comparison_data(
+        job: list[str] = Query(..., description="Job names to compare"),
+    ) -> ComparisonGridData:
+        """Get comparison grid data for multiple jobs."""
+        # Validate all jobs exist
+        existing_jobs = scanner.list_jobs()
+        for job_name in job:
+            if job_name not in existing_jobs:
+                raise HTTPException(
+                    status_code=404, detail=f"Job '{job_name}' not found"
+                )
+
+        # Collect all task summaries from all jobs
+        # Group by (source, task_name) for tasks and (job_name, agent_name, model_provider, model_name) for agent_models
+        tasks_set: set[tuple[str | None, str]] = set()
+        agent_models_set: set[tuple[str, str | None, str | None, str | None]] = set()
+        # cells[task_key][am_key] = ComparisonCell
+        cells: dict[str, dict[str, ComparisonCell]] = {}
+
+        for job_name in job:
+            summaries = _get_all_task_summaries(job_name)
+            for summary in summaries:
+                task_key = f"{summary.source or ''}::{summary.task_name}"
+                am_key = f"{job_name}::{summary.agent_name or ''}::{summary.model_provider or ''}::{summary.model_name or ''}"
+
+                tasks_set.add((summary.source, summary.task_name))
+                agent_models_set.add(
+                    (
+                        job_name,
+                        summary.agent_name,
+                        summary.model_provider,
+                        summary.model_name,
+                    )
+                )
+
+                if task_key not in cells:
+                    cells[task_key] = {}
+
+                cells[task_key][am_key] = ComparisonCell(
+                    job_name=job_name,
+                    avg_reward=summary.avg_reward,
+                    avg_duration_ms=summary.avg_duration_ms,
+                    n_trials=summary.n_trials,
+                    n_completed=summary.n_completed,
+                )
+
+        # Calculate average reward per task (across all agent_models)
+        task_avg_rewards: dict[str, float] = {}
+        for source, task_name in tasks_set:
+            task_key = f"{source or ''}::{task_name}"
+            task_cells = cells.get(task_key, {})
+            if task_cells:
+                rewards = [cell.avg_reward or 0.0 for cell in task_cells.values()]
+                task_avg_rewards[task_key] = sum(rewards) / len(rewards)
+            else:
+                task_avg_rewards[task_key] = 0.0
+
+        # Build task list sorted by average reward (high to low), then alphabetically
+        tasks = sorted(
+            [
+                ComparisonTask(
+                    source=source,
+                    task_name=task_name,
+                    key=f"{source or ''}::{task_name}",
+                )
+                for source, task_name in tasks_set
+            ],
+            key=lambda t: (
+                -task_avg_rewards.get(t.key, 0.0),
+                t.source or "",
+                t.task_name,
+            ),
+        )
+
+        # Calculate average reward per agent_model (across all tasks)
+        am_avg_rewards: dict[str, float] = {}
+        for job_name, agent_name, model_provider, model_name in agent_models_set:
+            am_key = f"{job_name}::{agent_name or ''}::{model_provider or ''}::{model_name or ''}"
+            rewards = []
+            for task_key, task_cells in cells.items():
+                if am_key in task_cells:
+                    rewards.append(task_cells[am_key].avg_reward or 0.0)
+            am_avg_rewards[am_key] = sum(rewards) / len(rewards) if rewards else 0.0
+
+        # Build agent_model list sorted by average reward (high to low), then alphabetically
+        agent_models = sorted(
+            [
+                ComparisonAgentModel(
+                    job_name=job_name,
+                    agent_name=agent_name,
+                    model_provider=model_provider,
+                    model_name=model_name,
+                    key=f"{job_name}::{agent_name or ''}::{model_provider or ''}::{model_name or ''}",
+                )
+                for job_name, agent_name, model_provider, model_name in agent_models_set
+            ],
+            key=lambda am: (
+                -am_avg_rewards.get(am.key, 0.0),
+                am.job_name,
+                am.agent_name or "",
+                am.model_provider or "",
+                am.model_name or "",
+            ),
+        )
+
+        return ComparisonGridData(
+            tasks=tasks,
+            agent_models=agent_models,
+            cells=cells,
+        )
+
+    @app.get("/api/jobs/{job_name}/config", response_model=JobConfig)
+    def get_job_config(job_name: str) -> dict[str, Any]:
+        """Get job configuration."""
+        config = scanner.get_job_config(job_name)
+        if not config:
+            raise HTTPException(
+                status_code=404, detail=f"Config for job '{job_name}' not found"
+            )
+        return config.model_dump(mode="json", context=REDACT_SECRETS_CONTEXT)
+
+    def _get_all_task_summaries(job_name: str) -> list[TaskSummary]:
+        """Get all task summaries for a job (used by list_tasks and get_task_filters)."""
+        trial_names = scanner.list_trials(job_name)
+        if not trial_names:
+            return []
+
+        # Group trials by (agent_name, model_provider, model_name, source, task_name)
+        groups: dict[
+            tuple[str | None, str | None, str | None, str | None, str],
+            TaskGroupStats,
+        ] = {}
+
+        for name in trial_names:
+            result = scanner.get_trial_result_or_status(job_name, name)
+            if not result:
+                continue
+
+            agent_name = result.agent_info.name
+            model_info = result.agent_info.model_info
+            model_name = model_info.name if model_info else None
+            model_provider = model_info.provider if model_info else None
+            source = result.source
+            task_name = result.task_name
+
+            key = (
+                agent_name,
+                model_provider,
+                model_name,
+                source,
+                task_name,
+            )
+
+            if key not in groups:
+                groups[key] = {
+                    "n_trials": 0,
+                    "n_completed": 0,
+                    "n_running": 0,
+                    "n_errors": 0,
+                    "exception_types": set(),
+                    "running_phases": set(),
+                    "total_reward": 0.0,
+                    "reward_count": 0,
+                    "total_duration_ms": 0.0,
+                    "duration_count": 0,
+                    "latest_started_at": None,
+                }
+
+            groups[key]["n_trials"] += 1
+            if result.started_at and (
+                groups[key]["latest_started_at"] is None
+                or result.started_at > groups[key]["latest_started_at"]
+            ):
+                groups[key]["latest_started_at"] = result.started_at
+
+            if result.finished_at:
+                groups[key]["n_completed"] += 1
+                if result.started_at:
+                    duration_ms = (
+                        result.finished_at - result.started_at
+                    ).total_seconds() * 1000
+                    groups[key]["total_duration_ms"] += duration_ms
+                    groups[key]["duration_count"] += 1
+            else:
+                groups[key]["n_running"] += 1
+                live_status = scanner.get_trial_status(job_name, name)
+                if live_status and live_status.phase:
+                    groups[key]["running_phases"].add(live_status.phase)
+
+            if result.exception_info:
+                groups[key]["n_errors"] += 1
+                groups[key]["exception_types"].add(result.exception_info.exception_type)
+
+            if result.finished_at:
+                # Get reward, defaulting to 0 if missing (evaluated but no reward).
+                reward = (
+                    result.verifier_result.rewards.get("reward", 0)
+                    if result.verifier_result and result.verifier_result.rewards
+                    else 0
+                )
+                groups[key]["total_reward"] += reward
+                groups[key]["reward_count"] += 1
+
+        # Convert to TaskSummary list
+        summaries = []
+        for (
+            agent_name,
+            model_provider,
+            model_name,
+            source,
+            task_name,
+        ), stats in groups.items():
+            status = (
+                "running"
+                if stats["n_running"] > 0
+                else "failed"
+                if stats["n_errors"] and stats["n_errors"] == stats["n_trials"]
+                else "completed"
+            )
+            running_phases = sorted(stats["running_phases"])
+            avg_reward = (
+                stats["total_reward"] / stats["reward_count"]
+                if stats["reward_count"] > 0
+                else None
+            )
+            avg_duration_ms = (
+                stats["total_duration_ms"] / stats["duration_count"]
+                if stats["duration_count"] > 0
+                else None
+            )
+
+            summaries.append(
+                TaskSummary(
+                    task_name=task_name,
+                    status=status,
+                    phase=running_phases[0] if running_phases else None,
+                    source=source,
+                    agent_name=agent_name,
+                    model_provider=model_provider,
+                    model_name=model_name,
+                    n_trials=int(stats["n_trials"]),
+                    n_completed=int(stats["n_completed"]),
+                    n_running=int(stats["n_running"]),
+                    n_errors=int(stats["n_errors"]),
+                    exception_types=sorted(stats["exception_types"]),
+                    avg_reward=avg_reward,
+                    avg_duration_ms=avg_duration_ms,
+                    latest_started_at=stats["latest_started_at"],
+                )
+            )
+
+        return summaries
+
+    @app.get("/api/jobs/{job_name}/tasks/filters", response_model=TaskFilters)
+    def get_task_filters(job_name: str) -> TaskFilters:
+        """Get available filter options for tasks list within a job."""
+        from collections import Counter
+
+        if job_name not in scanner.list_jobs():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        summaries = _get_all_task_summaries(job_name)
+
+        # Count occurrences of each filter value
+        agent_counts: Counter[str] = Counter()
+        provider_counts: Counter[str] = Counter()
+        model_counts: Counter[str] = Counter()
+        task_counts: Counter[str] = Counter()
+
+        for summary in summaries:
+            if summary.agent_name:
+                agent_counts[summary.agent_name] += 1
+            if summary.model_provider:
+                provider_counts[summary.model_provider] += 1
+            if summary.model_name:
+                model_counts[summary.model_name] += 1
+            if summary.task_name:
+                task_counts[summary.task_name] += 1
+
+        return TaskFilters(
+            agents=[
+                FilterOption(value=v, count=c) for v, c in sorted(agent_counts.items())
+            ],
+            providers=[
+                FilterOption(value=v, count=c)
+                for v, c in sorted(provider_counts.items())
+            ],
+            models=[
+                FilterOption(value=v, count=c) for v, c in sorted(model_counts.items())
+            ],
+            tasks=[
+                FilterOption(value=v, count=c) for v, c in sorted(task_counts.items())
+            ],
+        )
+
+    @app.get(
+        "/api/jobs/{job_name}/tasks", response_model=PaginatedResponse[TaskSummary]
+    )
+    def list_tasks(
+        job_name: str,
+        page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+        page_size: int = Query(
+            default=100, ge=1, le=100, description="Number of items per page"
+        ),
+        q: str | None = Query(default=None, description="Search query"),
+        agent: list[str] = Query(default=[], description="Filter by agent names"),
+        provider: list[str] = Query(default=[], description="Filter by provider names"),
+        model: list[str] = Query(default=[], description="Filter by model names"),
+        task: list[str] = Query(default=[], description="Filter by task names"),
+        sort_by: str | None = Query(
+            default=None,
+            description="Field to sort by (task_name, agent_name, model_provider, model_name, source, n_trials, n_errors, avg_duration_ms, avg_reward, latest_started_at)",
+        ),
+        sort_order: str = Query(default="asc", description="Sort order (asc or desc)"),
+    ) -> PaginatedResponse[TaskSummary]:
+        """List tasks in a job, grouped by agent + model + source + task_name."""
+        if job_name not in scanner.list_jobs():
+            raise HTTPException(status_code=404, detail=f"Job '{job_name}' not found")
+
+        summaries = _get_all_task_summaries(job_name)
+
+        # Filter by search query (searches task, agent, provider, model, dataset)
+        if q:
+            query = q.lower()
+            summaries = [
+                s
+                for s in summaries
+                if query in s.task_name.lower()
+                or (s.agent_name and query in s.agent_name.lower())
+                or (s.model_provider and query in s.model_provider.lower())
+                or (s.model_name and query in s.model_name.lower())
+                or (s.source and query in s.source.lower())
+            ]
+
+        # Filter by agents
+        if agent:
+            summaries = [s for s in summaries if s.agent_name in agent]
+
+        # Filter by providers
+        if provider:
+            summaries = [s for s in summaries if s.model_provider in provider]
+
+        # Filter by models
+        if model:
+            summaries = [s for s in summaries if s.model_name in model]
+
+        # Filter by task names
+        if task:
+            summaries = [s for s in summaries if s.task_name in task]
+
+        # Sort
+        if sort_by:
+            reverse = sort_order == "desc"
+            if sort_by == "task_name":
+                summaries.sort(key=lambda s: s.task_name or "", reverse=reverse)
+            elif sort_by == "agent_name":
+                summaries.sort(key=lambda s: s.agent_name or "", reverse=reverse)
+            elif sort_by == "model_provider":
+                summaries.sort(key=lambda s: s.model_provider or "", reverse=reverse)
+            elif sort_by == "model_name":
+                summaries.sort(key=lambda s: s.model_name or "", reverse=reverse)
+            elif sort_by == "source":
+                summaries.sort(key=lambda s: s.source or "", reverse=reverse)
+            elif sort_by == "n_trials":
+                summaries.sort(key=lambda s: s.n_trials, reverse=reverse)
+            elif sort_by == "n_errors":
+                summaries.sort(key=lambda s: s.n_errors, reverse=reverse)
+            elif sort_by == "avg_duration_ms":
+                # Put None values at the end
+                summaries.sort(
+                    key=lambda s: (
+                        s.avg_duration_ms is None,
+                        s.avg_duration_ms or 0,
+                    ),
+                    reverse=reverse,
+                )
+            elif sort_by == "avg_reward":
+                summaries.sort(key=lambda s: s.avg_reward or 0, reverse=reverse)
+            elif sort_by == "latest_started_at":
+                summaries.sort(
+                    key=lambda s: _timestamp_sort_value(s.latest_started_at),
+                    reverse=reverse,
+                )
+                summaries.sort(key=lambda s: s.latest_started_at is None)
+            elif sort_by == "exception_types":
+                summaries.sort(
+                    key=lambda s: s.exception_types[0] if s.exception_types else "",
+                    reverse=reverse,
+                )
+
+        # Paginate
+        total = len(summaries)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_summaries = summaries[start_idx:end_idx]
+
+        return PaginatedResponse(
+            items=page_summaries,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+    @app.get(
+        "/api/jobs/{job_name}/trials",
+        response_model=PaginatedResponse[TrialSummary],
+    )
+    def list_trials(
+        job_name: str,
+        task_name: str | None = Query(default=None, description="Filter by task name"),
+        source: str | None = Query(
+            default=None, description="Filter by source/dataset"
+        ),
+        agent_name: str | None = Query(
+            default=None, description="Filter by agent name"
+        ),
+        model_name: str | None = Query(
+            default=None, description="Filter by model name"
+        ),
+        page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
+        page_size: int = Query(
+            default=100, ge=1, le=100, description="Number of items per page"
+        ),
+    ) -> PaginatedResponse[TrialSummary]:
+        """List trials in a job with pagination and optional filtering."""
+        trial_names = scanner.list_trials(job_name)
+        if not trial_names:
+            if job_name not in scanner.list_jobs():
+                raise HTTPException(
+                    status_code=404, detail=f"Job '{job_name}' not found"
+                )
+            return PaginatedResponse(
+                items=[], total=0, page=page, page_size=page_size, total_pages=0
+            )
+
+        # Build list of trial summaries with filtering
+        all_summaries = []
+        for name in trial_names:
+            result = scanner.get_trial_result_or_status(job_name, name)
+            if not result:
+                continue
+
+            # Apply filters
+            if task_name is not None and result.task_name != task_name:
+                continue
+            if source is not None and result.source != source:
+                continue
+            if agent_name is not None and result.agent_info.name != agent_name:
+                continue
+            model_info = result.agent_info.model_info
+            # Build full model name (provider/name) to match frontend format
+            if model_info and model_info.provider:
+                result_full_model_name = f"{model_info.provider}/{model_info.name}"
+            elif model_info:
+                result_full_model_name = model_info.name
+            else:
+                result_full_model_name = None
+            if model_name is not None and result_full_model_name != model_name:
+                continue
+
+            # Extract primary reward if available
+            reward = None
+            if result.verifier_result and result.verifier_result.rewards:
+                reward = result.verifier_result.rewards.get("reward")
+
+            result_model_provider = model_info.provider if model_info else None
+            result_model_name = model_info.name if model_info else None
+            status, phase = _get_trial_status_phase(job_name, name, result)
+
+            all_summaries.append(
+                TrialSummary(
+                    name=name,
+                    task_name=result.task_name,
+                    status=status,
+                    phase=phase,
+                    id=result.id,
+                    source=result.source,
+                    agent_name=result.agent_info.name,
+                    model_provider=result_model_provider,
+                    model_name=result_model_name,
+                    reward=reward,
+                    error_type=(
+                        result.exception_info.exception_type
+                        if result.exception_info
+                        else None
+                    ),
+                    started_at=result.started_at,
+                    finished_at=result.finished_at,
+                )
+            )
+
+        # Paginate
+        total = len(all_summaries)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        page_summaries = all_summaries[start_idx:end_idx]
+
+        return PaginatedResponse(
+            items=page_summaries,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}", response_model=TrialResult)
+    def get_trial(job_name: str, trial_name: str) -> dict[str, Any]:
+        """Get full trial result details."""
+        result = scanner.get_trial_result_or_status(job_name, trial_name)
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+        return result.model_dump(mode="json", context=REDACT_SECRETS_CONTEXT)
+
+    @app.get(
+        "/api/jobs/{job_name}/trials/{trial_name}/status",
+        response_model=TrialStatusSummary,
+    )
+    def get_trial_status(job_name: str, trial_name: str) -> TrialStatusSummary:
+        """Get lightweight live status metadata for a trial."""
+        result = scanner.get_trial_result_or_status(job_name, trial_name)
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        live_status = scanner.get_trial_status(job_name, trial_name)
+        status, phase = _get_trial_status_phase(job_name, trial_name, result)
+        return TrialStatusSummary(
+            status=status,
+            phase=phase,
+            updated_at=(
+                live_status.updated_at
+                if live_status is not None
+                else result.finished_at or result.started_at
+            ),
+        )
+
+    @app.post("/api/jobs/{job_name}/trials/{trial_name}/summarize")
+    async def summarize_trial(
+        job_name: str, trial_name: str, request: TrialSummarizeRequest
+    ) -> dict[str, str | None]:
+        """Generate an analysis for a single trial using harbor analyze."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        from harbor.analyze.analyzer import Analyzer
+        from harbor.analyze.models import format_analysis_plain_text
+
+        analyzer = Analyzer(model=request.model)
+        result = await analyzer.analyze_trial(trial_dir)
+
+        return {"summary": format_analysis_plain_text(result)}
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/trajectory")
+    def get_trajectory(
+        job_name: str,
+        trial_name: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> dict[str, Any] | None:
+        """Get trajectory.json content for a trial (optionally a specific step)."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        root = _resolve_step_root(trial_dir, step)
+        agent_dir = root / "agent"
+        trajectory_path = agent_dir / "trajectory.json"
+        if not trajectory_path.exists():
+            return _build_live_openhands_trajectory(agent_dir)
+
+        try:
+            return json.loads(trajectory_path.read_text())
+        except json.JSONDecodeError:
+            live_trajectory = _build_live_openhands_trajectory(agent_dir)
+            if live_trajectory is not None:
+                return live_trajectory
+            return None
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/verifier-output")
+    def get_verifier_output(
+        job_name: str,
+        trial_name: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> dict[str, str | dict[str, Any] | None]:
+        """Get verifier output files from the trial's verifier directory.
+
+        Returns test-stdout.txt, test-stderr.txt, ctrf.json as text, plus reward.json
+        and reward-details.json (rewardkit) parsed as JSON.
+        """
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        verifier_dir = _resolve_step_root(trial_dir, step) / "verifier"
+
+        def _read_text(path: Path) -> str | None:
+            if not path.exists():
+                return None
+            try:
+                return path.read_text()
+            except Exception:
+                return "[Error reading file]"
+
+        def _read_json(path: Path) -> dict[str, Any] | None:
+            if not path.exists():
+                return None
+            try:
+                parsed = json.loads(path.read_text())
+            except Exception:
+                return None
+            return parsed if isinstance(parsed, dict) else None
+
+        return {
+            "stdout": _read_text(verifier_dir / "test-stdout.txt"),
+            "stderr": _read_text(verifier_dir / "test-stderr.txt"),
+            "ctrf": _read_text(verifier_dir / "ctrf.json"),
+            "reward": _read_json(verifier_dir / "reward.json"),
+            "reward_details": _read_json(verifier_dir / "reward-details.json"),
+        }
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/files")
+    def list_trial_files(
+        job_name: str,
+        trial_name: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> list[FileInfo]:
+        """List all files in a trial directory (optionally a specific step)."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        root = _resolve_step_root(trial_dir, step)
+        files: list[FileInfo] = []
+
+        def scan_dir(dir_path: Path, relative_base: str = "") -> None:
+            try:
+                for item in sorted(dir_path.iterdir()):
+                    relative_path = (
+                        f"{relative_base}/{item.name}" if relative_base else item.name
+                    )
+                    if item.is_dir():
+                        files.append(
+                            FileInfo(
+                                path=relative_path,
+                                name=item.name,
+                                is_dir=True,
+                                size=None,
+                            )
+                        )
+                        scan_dir(item, relative_path)
+                    else:
+                        files.append(
+                            FileInfo(
+                                path=relative_path,
+                                name=item.name,
+                                is_dir=False,
+                                size=item.stat().st_size,
+                            )
+                        )
+            except PermissionError:
+                pass
+
+        scan_dir(root)
+        return files
+
+    @app.get(
+        "/api/jobs/{job_name}/trials/{trial_name}/files/{file_path:path}",
+        response_model=None,
+    )
+    def get_trial_file(
+        job_name: str,
+        trial_name: str,
+        file_path: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> PlainTextResponse | FileResponse:
+        """Get content of a file in a trial directory.
+
+        For text files, returns PlainTextResponse with the content.
+        For image files (png, jpg, gif, webp), returns FileResponse with appropriate media type.
+        """
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        root = _resolve_step_root(trial_dir, step)
+
+        # Resolve the path and ensure it's within the trial directory (prevent traversal)
+        try:
+            full_path = (root / file_path).resolve()
+            if trial_dir.resolve() not in full_path.parents:
+                raise HTTPException(status_code=403, detail="Access denied")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid file path")
+
+        if not full_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if full_path.is_dir():
+            raise HTTPException(status_code=400, detail="Cannot read directory")
+
+        def _format_size(size_bytes: int) -> str:
+            """Format bytes as human-readable string."""
+            if size_bytes < 1024:
+                return f"{size_bytes} bytes"
+            elif size_bytes < 1024 * 1024:
+                return f"{size_bytes / 1024:.1f} KB"
+            else:
+                return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+        # Check file size
+        file_size = full_path.stat().st_size
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large: {_format_size(file_size)} (max {_format_size(MAX_FILE_SIZE)})",
+            )
+
+        # Handle image files - serve as binary with correct media type
+        image_extensions = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".svg": "image/svg+xml",
+        }
+        suffix = full_path.suffix.lower()
+        if suffix in image_extensions:
+            return FileResponse(
+                path=full_path,
+                media_type=image_extensions[suffix],
+                filename=full_path.name,
+            )
+
+        # For text files, read and return as plain text
+        try:
+            content = full_path.read_text()
+            return PlainTextResponse(content)
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=415, detail="File is binary and cannot be displayed"
+            )
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/tail", response_model=FileTail)
+    def tail_trial_file(
+        job_name: str,
+        trial_name: str,
+        file_path: str = Query(default="trial.log", description="File to tail"),
+        offset: int = Query(default=0, ge=0, description="Byte offset to read from"),
+        max_bytes: int = Query(
+            default=65536, ge=1, le=1024 * 1024, description="Maximum bytes to read"
+        ),
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> FileTail:
+        """Read a tail chunk from a trial file without loading the whole file."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        root = _resolve_step_root(trial_dir, step)
+        try:
+            full_path = (root / file_path).resolve()
+            if trial_dir.resolve() not in full_path.parents:
+                raise HTTPException(status_code=403, detail="Access denied")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid file path")
+
+        if not full_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        if full_path.is_dir():
+            raise HTTPException(status_code=400, detail="Cannot tail directory")
+
+        size = full_path.stat().st_size
+        read_offset = offset if offset <= size else 0
+        with full_path.open("rb") as f:
+            f.seek(read_offset)
+            data = f.read(max_bytes)
+
+        return FileTail(
+            path=file_path,
+            start_offset=read_offset,
+            offset=read_offset + len(data),
+            size=size,
+            text=data.decode("utf-8", errors="replace"),
+            truncated=(read_offset + len(data)) < size,
+        )
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/artifacts")
+    def get_artifacts(
+        job_name: str,
+        trial_name: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> dict[str, Any]:
+        """Get artifacts collected from the trial sandbox."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        artifacts_dir = _resolve_step_root(trial_dir, step) / "artifacts"
+        if not artifacts_dir.exists():
+            return {"files": [], "manifest": None}
+
+        # Parse manifest.json if present
+        manifest = None
+        manifest_path = artifacts_dir / "manifest.json"
+        if manifest_path.exists():
+            try:
+                manifest = json.loads(manifest_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                manifest = None
+
+        # Scan artifacts directory for files, excluding manifest.json
+        files: list[FileInfo] = []
+
+        def scan_dir(dir_path: Path, relative_base: str = "") -> None:
+            try:
+                for item in sorted(dir_path.iterdir()):
+                    relative_path = (
+                        f"{relative_base}/{item.name}" if relative_base else item.name
+                    )
+                    if item.name == "manifest.json" and not relative_base:
+                        continue
+                    if item.is_dir():
+                        scan_dir(item, relative_path)
+                    else:
+                        files.append(
+                            FileInfo(
+                                path=relative_path,
+                                name=item.name,
+                                is_dir=False,
+                                size=item.stat().st_size,
+                            )
+                        )
+            except PermissionError:
+                pass
+
+        scan_dir(artifacts_dir)
+        return {"files": files, "manifest": manifest}
+
+    @app.get("/api/jobs/{job_name}/trials/{trial_name}/agent-logs")
+    def get_agent_logs(
+        job_name: str,
+        trial_name: str,
+        step: str | None = Query(default=None, description="Step name to scope to"),
+    ) -> dict[str, Any]:
+        """Get agent log files (oracle.txt, setup/setup.log, command-*/stdout.txt)."""
+        trial_dir = _validate_trial_path(job_name, trial_name)
+        if not trial_dir.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trial '{trial_name}' not found in job '{job_name}'",
+            )
+
+        root = _resolve_step_root(trial_dir, step)
+        agent_dir = root / "agent"
+        logs: dict[str, Any] = {
+            "oracle": None,
+            "setup": None,
+            "commands": [],
+            "summary": None,
+        }
+
+        # Read analysis.md if it exists (always trial-level)
+        analysis_path_md = trial_dir / "analysis.md"
+        if analysis_path_md.exists():
+            try:
+                logs["summary"] = analysis_path_md.read_text()
+            except Exception:
+                logs["summary"] = "[Error reading file]"
+
+        # Read analysis.json if it exists (structured analysis from harbor analyze)
+        analysis_path = trial_dir / "analysis.json"
+        if analysis_path.exists():
+            try:
+                logs["analysis"] = json.loads(analysis_path.read_text())
+            except Exception:
+                logs["analysis"] = None
+
+        # Read oracle.txt if it exists
+        oracle_path = agent_dir / "oracle.txt"
+        if oracle_path.exists():
+            try:
+                logs["oracle"] = oracle_path.read_text()
+            except Exception:
+                logs["oracle"] = "[Error reading file]"
+
+        # Read setup/setup.log if it exists.
+        setup_stdout_path = agent_dir / "setup" / "setup.log"
+        if setup_stdout_path.exists():
+            try:
+                logs["setup"] = setup_stdout_path.read_text()
+            except Exception:
+                logs["setup"] = "[Error reading file]"
+
+        # Read command-*/stdout.txt files
+        i = 0
+        while True:
+            command_dir = agent_dir / f"command-{i}"
+            if not command_dir.exists():
+                break
+            stdout_path = command_dir / "stdout.txt"
+            if stdout_path.exists():
+                try:
+                    logs["commands"].append(
+                        {"index": i, "content": stdout_path.read_text()}
+                    )
+                except Exception:
+                    logs["commands"].append(
+                        {"index": i, "content": "[Error reading file]"}
+                    )
+            i += 1
+
+        return logs

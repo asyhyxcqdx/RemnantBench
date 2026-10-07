@@ -1,0 +1,5 @@
+from __future__ import annotations
+
+WORKER_VALIDATE_TIMEOUT_EXEMPT_OPERATION = "worker_validate_tool_host_work"
+WORKER_VALIDATE_TIMEOUT_EXEMPT_STATUS_STARTED = "started"
+WORKER_VALIDATE_TIMEOUT_EXEMPT_STATUS_COMPLETED = "completed"

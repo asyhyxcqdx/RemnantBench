@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "content"
+  ],
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "A self-contained task input with the configured level of diagnostic guidance. The reference patch is confidential evidence: narrow the investigation as allowed by the selected style without disclosing an exact broken statement, comparison, constant, operator, missing call or branch, or concrete repair operation.",
+      "minLength": 1,
+      "pattern": "\\S"
+    }
+  }
+}

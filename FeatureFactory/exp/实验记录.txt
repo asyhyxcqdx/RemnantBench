@@ -1,0 +1,19 @@
+openswe 有 8876 个 env, 他们的 env 是以 (repo, pr) 为粒度的, repo 去重后只有 4619 个, 详见 openswe_filtered_repos.txt
+choice A: star 下限 2000, 创建和 push 时间下界 2000/01/01, -> 5002 个 repo
+choice B: star 下限 5000, 创建和 push 时间下界 2000/01/01, -> 1916 个 repo
+choice C: star 下限 10000, 创建和 push 时间下界 2000/01/01, -> 853 个 repo
+
+如果 choice C 能训出的效果好于 openswe, 那就赢麻了; 有空可以做一个用跟 openswe 一样 repo 然后去训的, 看看效果
+
+1. 用 glm-5 w4a8 跑这 853 个 repo 的 FF pipeline
+
+2. harbor 开始分别在上面三个 dataset 上面用 glm-5 w4a8 rollout, 每条 task 采样 4 次, 保留同一 task 中 4 次里成功 1 或 2 次 的 traj
+
+3. 对于这些 traj, 变种出几类:
+    a. dep>=3 的 traj
+    b. dep=1 的 traj
+    c. dep=1/2/3/4/5/6/7
+
+    这些分类是这样选出来的, 首先可以得到有哪些 repo 的 dep>=3, 这些 repo 肯定也是有 dep=1 的, 所以 a. 有多少条 traj, b. 就能对应选出多少条 traj, 不妨把 a. 和 b. 的 traj 数叫做 x. 对于 c 来说, 仍然是这些 repo, 但是 traj 数肯定远超 x. 因此, 会 random 筛掉一些 repo, 使得 traj ≈ x 即可
+
+4. 对于上述三类 traj, 分别拿去 train, 看效果

@@ -1,0 +1,11 @@
+{
+  "file": "remnantbench-data-v1.tar.gz",
+  "bytes": 64088749,
+  "sha256": "984b833c866e9a97fe65e53279ae4feeeb6fa1d2190787a27fcf1e9f7fe92275",
+  "tasks": {
+    "Full200": 200,
+    "Lite40": 40,
+    "Lite40-file-hints": 40,
+    "Lite40-neutral-repair": 40
+  }
+}

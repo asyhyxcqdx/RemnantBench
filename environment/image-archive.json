@@ -1,0 +1,28 @@
+{
+  "format": "docker-save+gzip+split",
+  "images": 35,
+  "parts": [
+    {
+      "file": "images/remnantbench-images.tar.gz.part-000",
+      "bytes": 2147483648,
+      "sha256": "13f80da0b4759d3e46bb7ff24bfca89c43dceb7ca56f9add961589935560a245"
+    },
+    {
+      "file": "images/remnantbench-images.tar.gz.part-001",
+      "bytes": 2147483648,
+      "sha256": "f3c0845cedf8f56390b73af23e74a037cb87bf3c77700f0f1fd483c3f22f7126"
+    },
+    {
+      "file": "images/remnantbench-images.tar.gz.part-002",
+      "bytes": 2147483648,
+      "sha256": "5398195c2b00b1f8e0634dd1358f8f18a0950285aa33b77c41129971357f0c31"
+    },
+    {
+      "file": "images/remnantbench-images.tar.gz.part-003",
+      "bytes": 889899797,
+      "sha256": "37d730184000642d6da389d45b24026bb6ff289123f7cf4c9b56a0289d097ab9"
+    }
+  ],
+  "compressed_bytes": 7332350741,
+  "archive_sha256": "3ff1f6f13d91b68c6ce8ee5c102f0b3ba89b2b7937ff28ecfefb37c148156d88"
+}

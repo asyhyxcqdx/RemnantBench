@@ -1,0 +1,16 @@
+{
+  "id": "swe",
+  "display_name": "Natural software issue",
+  "prompt_assets": [
+    "concise_symptom.md",
+    "workflow_impact.md",
+    "reproduction_note.md",
+    "regression_report.md",
+    "issue_template.md",
+    "uncertain_triage.md"
+  ],
+  "fields_schema_asset": "fields.schema.json",
+  "task_input_template_asset": "task_input.md.j2",
+  "validator_asset": "validator.py",
+  "local_example_asset": "local_example.json"
+}

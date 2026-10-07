@@ -1,0 +1,14 @@
+{
+  "id": "fb",
+  "display_name": "Structured feature PRD",
+  "prompt_assets": [
+    "prompt.md"
+  ],
+  "one_shot_assets": [
+    "one_shot.md"
+  ],
+  "fields_schema_asset": "fields.schema.json",
+  "task_input_template_asset": "task_input.md.j2",
+  "validator_asset": "validator.py",
+  "local_example_asset": "local_example.json"
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 7,
+  "enabled_styles": [
+    "swe",
+    "fb",
+    "hint"
+  ],
+  "style_manifests": [
+    "swe/style.json",
+    "fb/style.json",
+    "hint/style.json"
+  ]
+}

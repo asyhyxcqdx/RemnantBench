@@ -1,0 +1,18 @@
+{
+  "title": "Implement the affected feature contract",
+  "fields": {
+    "task_statement": "Implement the affected public feature contract while preserving unrelated behavior and the existing public surface.",
+    "interfaces": [
+      {
+        "description": "Provide a public operation that applies the repository's feature behavior to one input and returns the observable result defined by the existing contract.",
+        "path": "src/feature.py",
+        "code": "def apply_feature(value: object) -> object:\n    \"\"\"Apply the repository's public feature behavior.\"\"\"\n    <your code>"
+      },
+      {
+        "description": "Expose the result object returned by the feature operation, preserving the public state and behavior expected by callers.",
+        "path": "src/result.py",
+        "code": "class FeatureResult:\n    \"\"\"Represent the externally visible feature result.\"\"\"\n    <your code>"
+      }
+    ]
+  }
+}
