@@ -23,8 +23,12 @@ from adapters.belta.adapter import (
 NFT_MODULES = ("nft_fib_inet", "nft_redir", "nft_reject_inet")
 MODULE_LOADER_IMAGE = "docker.io/library/alpine:3.23.4@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"
 EGRESS_CONTROL_SIDECAR_BASE_IMAGE = "docker.io/gogost/gost:3.2.7-nightly.20260602@sha256:afc0137758ab4ce399d47a299f9abbacbf522b52a17e59cbb4b4e7a1a66e9196"
-EGRESS_CONTROL_KERNEL_PROBE_IMAGE_ENV = "HARBOR_EGRESS_CONTROL_KERNEL_PROBE_IMAGE"
-EGRESS_CONTROL_SIDECAR_BASE_IMAGE_ENV = "HARBOR_EGRESS_CONTROL_SIDECAR_BASE_IMAGE"
+EGRESS_CONTROL_KERNEL_PROBE_IMAGE_ENV = (
+    "HARBOR_EGRESS_CONTROL_KERNEL_PROBE_IMAGE"
+)
+EGRESS_CONTROL_SIDECAR_BASE_IMAGE_ENV = (
+    "HARBOR_EGRESS_CONTROL_SIDECAR_BASE_IMAGE"
+)
 DEFAULT_AGENT = "mini-swe-agent"
 BELTA_RESULT_PLUGIN = "harbor.plugins.belta_result:BeltaResultPlugin"
 AGENTS_WITHOUT_MODEL = frozenset({"oracle", "nop"})
@@ -222,7 +226,8 @@ def _validate_retire_image_labels(
         raise RuntimeError(f"image is not a Belta Retire environment: {image}")
     if labels.get("org.belta.build-context-sha256") != digest:
         raise RuntimeError(
-            f"Retire environment image label does not match the exported task: {image}"
+            "Retire environment image label does not match the exported task: "
+            f"{image}"
         )
 
 
@@ -395,7 +400,9 @@ def _cache_environment(role: str) -> dict[str, str]:
         "YARN_CACHE_FOLDER": f"{HOST_CACHE_TARGET}/yarn",
     }
     environment[
-        "HARBOR_AGENT_CACHE_DIR" if role == "agent" else "HARBOR_VERIFIER_CACHE_DIR"
+        "HARBOR_AGENT_CACHE_DIR"
+        if role == "agent"
+        else "HARBOR_VERIFIER_CACHE_DIR"
     ] = HOST_CACHE_TARGET
     return environment
 
@@ -561,10 +568,6 @@ def main(argv: list[str] | None = None) -> None:
         "--model",
         help="Model override; otherwise use LLM_MODEL from --env-file.",
     )
-    parser.add_argument(
-        "--base-url",
-        help="Override the model endpoint and the agent network allowlist host.",
-    )
     parser.add_argument("--job-name", help="Stable Harbor Job name.")
     parser.add_argument(
         "--n-attempts",
@@ -620,19 +623,6 @@ def main(argv: list[str] | None = None) -> None:
     if args.agent not in AGENTS_WITHOUT_MODEL and env_file is None:
         raise ValueError("--env-file is required for model agents")
     values = _env_file_values(env_file) if env_file is not None else {}
-    if args.base_url is not None:
-        if args.agent in AGENTS_WITHOUT_MODEL:
-            raise ValueError(f"--base-url is not valid for {args.agent}")
-        parsed_url = urlsplit(args.base_url)
-        if (
-            parsed_url.scheme not in {"http", "https"}
-            or not parsed_url.hostname
-            or parsed_url.username
-            or parsed_url.password
-        ):
-            raise ValueError("--base-url must be HTTP(S) and contain no credentials")
-        values["LLM_BASE_URL"] = args.base_url
-        values["OPENAI_BASE_URL"] = args.base_url
     ensure_retire_environment_images(path)
     ensure_nftables_modules()
 
@@ -654,15 +644,6 @@ def main(argv: list[str] | None = None) -> None:
     if env_file is not None:
         command.extend(["--env-file", str(env_file)])
     command.extend(_agent_model_arguments(args.agent, values, args.model))
-    if args.base_url is not None:
-        command.extend(
-            [
-                "--agent-env",
-                f"OPENAI_BASE_URL={args.base_url}",
-                "--agent-env",
-                f"OPENAI_API_BASE={args.base_url}",
-            ]
-        )
     if args.job_name:
         command.extend(["--job-name", args.job_name])
     for task_name in args.include_task_name:

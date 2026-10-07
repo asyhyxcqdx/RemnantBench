@@ -1,0 +1,12 @@
+model:
+  model_class: litellm
+  cost_tracking: ignore_errors
+  model_kwargs:
+    api_base: https://api.openlux.ai/v1
+    timeout: 120
+    extra_headers:
+      User-Agent: Mozilla/5.0
+    reasoning_effort: max
+    drop_params: false
+agent:
+  step_limit: 150

@@ -1,0 +1,8 @@
+[submodule "software-agent-sdk"]
+	path = software-agent-sdk
+	url = git@github.com:potatoQi/software-agent-sdk.git
+	branch = featurefactory/container-labels
+[submodule "harbor"]
+	path = harbor
+	url = git@github.com:potatoQi/harbor.git
+	branch = codex/feature-factory-adapter

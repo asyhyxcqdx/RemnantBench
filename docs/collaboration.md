@@ -1,45 +1,146 @@
-# 本轮协作运行分工
+# 本轮分工与原 Harbor 命令
 
-本轮 API 任务共 1560 次。所有 Full200 使用同一冻结 200 题；消融使用同一 Lite40。
-默认 mini 查询上限 150、Agent 3600 秒、整题重试 0。
+API 计划共 1560 次：项目方在 234、88 跑 Astra、Sol、Opus、Gemini 的 Full200，
+以及 Sol 的两项 Lite40 消融（880 次）；学长跑 Kimi、GLM、DeepSeek 的 Full200，
+以及 DeepSeek 的两项 Lite40 消融（680 次）。Qwen 沿用已单独安排的本地评测。
 
-| 执行方 | Full200 | 消融 | 次数 |
-| --- | --- | --- | --- |
-| 项目方的 234、88 服务器 | GPT-6-Astra、GPT-6.1-Sol、Claude-Opus-5.5、Gemini-3.8-Flash | Sol 的文件位置提示、中性修复 | 880 |
-| 学长自己的服务器 | GLM-5.3、Kimi-K3、DeepSeek-V4.1-Flash | DeepSeek 的文件位置提示、中性修复 | 680 |
-
-两台项目服务器之间的具体分配可以自由安排，同一模型/实验只安排一份正式运行。
-Qwen 使用此前单独安排的本地评测，不包含在这 1560 次 API 任务中。
-以下命令逐条执行，不会自动并行启动所有模型。
+准备各自渠道的私有 env 文件后，在 `RemnantBench/harbor/` 下逐条运行。
+这些命令直接调用原 `run_harbor`，连接 YAML 的唯一增量为已约定的 150 步上限。
+每个模型/实验只安排一份正式运行。下面并发以 4 为例。
 
 ## 学长
 
-按根 README 克隆代码、下载魔搭数据和镜像，并准备对应渠道的私有 `glm.env`、
-`kimi.env`、`deepseek.env`，然后从仓库根目录执行：
-
 ```bash
-python3 scripts/evaluate.py --model GLM-5.3 --experiment Full200 --env-file glm.env --concurrency 4
-python3 scripts/evaluate.py --model Kimi-K3 --experiment Full200 --env-file kimi.env --concurrency 4
-python3 scripts/evaluate.py --model DeepSeek-V4.1-Flash --experiment Full200 --env-file deepseek.env --concurrency 4
-python3 scripts/evaluate.py --model DeepSeek-V4.1-Flash --experiment Lite40-file-hints --env-file deepseek.env --concurrency 4
-python3 scripts/evaluate.py --model DeepSeek-V4.1-Flash --experiment Lite40-neutral-repair --env-file deepseek.env --concurrency 4
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../glm.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/glm-5.3 \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/GLM-5.3 --max-retries 0 \
+  --ak config_file=../configs/connection-configs/glm-5.3.yaml \
+  --ak reasoning_effort=max \
+  --ak retry_service_failures=true
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../kimi.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/kimi-k3 \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/Kimi-K3 --max-retries 0 \
+  --ak config_file=../configs/connection-configs/kimi-k3.yaml \
+  --ak reasoning_effort=max
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../deepseek.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/deepseek-v4.1-flash \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/DeepSeek-V4.1-Flash --max-retries 0 \
+  --ak config_file=../configs/connection-configs/deepseek-v4.1-flash.yaml \
+  --ak reasoning_effort=max
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Lite40-file-hints \
+  --env-file ../deepseek.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/deepseek-v4.1-flash \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Lite40-file-hints \
+  -- --jobs-dir ../belta-step150/DeepSeek-V4.1-Flash --max-retries 0 \
+  --ak config_file=../configs/connection-configs/deepseek-v4.1-flash.yaml \
+  --ak reasoning_effort=max
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Lite40-neutral-repair \
+  --env-file ../deepseek.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/deepseek-v4.1-flash \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Lite40-neutral-repair \
+  -- --jobs-dir ../belta-step150/DeepSeek-V4.1-Flash --max-retries 0 \
+  --ak config_file=../configs/connection-configs/deepseek-v4.1-flash.yaml \
+  --ak reasoning_effort=max
 ```
 
 ## 项目方
 
 ```bash
-python3 scripts/evaluate.py --model GPT-6-Astra --experiment Full200 --env-file astra.env --concurrency 4
-python3 scripts/evaluate.py --model GPT-6.1-Sol --experiment Full200 --env-file sol.env --concurrency 4
-python3 scripts/evaluate.py --model Claude-Opus-5.5 --experiment Full200 --env-file opus.env --concurrency 4
-python3 scripts/evaluate.py --model Gemini-3.8-Flash --experiment Full200 --env-file gemini.env --concurrency 4
-python3 scripts/evaluate.py --model GPT-6.1-Sol --experiment Lite40-file-hints --env-file sol.env --concurrency 4
-python3 scripts/evaluate.py --model GPT-6.1-Sol --experiment Lite40-neutral-repair --env-file sol.env --concurrency 4
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../astra.env \
+  --agent mini-swe-agent \
+  --model openai/gpt-6-astra \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/GPT-6-Astra --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gpt-6-astra.yaml \
+  --ak reasoning_effort=xhigh \
+  --ak responses_system_as_instructions=true
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../sol.env \
+  --agent mini-swe-agent \
+  --model openai/gpt-6.1-sol \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/GPT-6.1-Sol --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gpt-6.1-sol.yaml \
+  --ak reasoning_effort=high \
+  --ak responses_system_as_instructions=true
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../opus.env \
+  --agent mini-swe-agent \
+  --model anthropic/claude-opus-5-5 \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/Claude-Opus-5.5 --max-retries 0 \
+  --ak config_file=../configs/connection-configs/claude-opus-5-5.yaml \
+  --ak reasoning_effort=max
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../gemini.env \
+  --agent mini-swe-agent \
+  --model litellm_proxy/gemini-3.8-flash \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/Gemini-3.8-Flash --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gemini-3.8-flash.yaml \
+  --ak reasoning_effort=high
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Lite40-file-hints \
+  --env-file ../sol.env \
+  --agent mini-swe-agent \
+  --model openai/gpt-6.1-sol \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Lite40-file-hints \
+  -- --jobs-dir ../belta-step150/GPT-6.1-Sol --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gpt-6.1-sol.yaml \
+  --ak reasoning_effort=high \
+  --ak responses_system_as_instructions=true
+
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Lite40-neutral-repair \
+  --env-file ../sol.env \
+  --agent mini-swe-agent \
+  --model openai/gpt-6.1-sol \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Lite40-neutral-repair \
+  -- --jobs-dir ../belta-step150/GPT-6.1-Sol --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gpt-6.1-sol.yaml \
+  --ak reasoning_effort=high \
+  --ak responses_system_as_instructions=true
 ```
 
-每条命令默认 150 步。首次可追加 `--task TASK_ID` 与独立的 `--output-dir pilot-results`
-验证接口，或追加 `--dry-run` 只查看请求配置。正式开跑前确认各模型 ID 和渠道密钥。
-
-交回每个模型/实验的结果目录及 `scripts/summarize.py` 生成的汇总。
-轨迹、补丁、Verifier 明细保留在原 Trial 目录，便于复查。
-服务商账单另附，汇总中的 `reported_cost_usd` 是运行框架估计值。
-运行记录可能包含请求配置，公开分享前检查并移除其中的实际凭据。
+交回完整的 Harbor Job 目录，包含配置、Trial 结果、轨迹、补丁和 Verifier 明细。
+实际费用使用服务商账单。运行记录可能包含请求配置，分享前检查实际凭据。

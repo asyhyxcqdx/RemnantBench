@@ -156,10 +156,7 @@ def test_cn_profile_uses_mirrors() -> None:
     assert "HF_ENDPOINT=https://hf-mirror.com" in environment_values
     assert environment_values.count("HF_TOKEN=${HF_TOKEN:-}") == 2
     assert "npm_config_registry=https://registry.npmmirror.com" in environment_values
-    assert (
-        "UV_DEFAULT_INDEX=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
-        in environment_values
-    )
+    assert "UV_DEFAULT_INDEX=https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/" in environment_values
     assert arguments[-2:] == ["--agent-kwarg", "install_profile=cn"]
 
 
@@ -248,9 +245,9 @@ def test_oracle_accepts_a_dataset_and_requested_concurrency(tmp_path: Path) -> N
     assert environment[run_harbor.EGRESS_CONTROL_KERNEL_PROBE_IMAGE_ENV].startswith(
         "docker.1ms.run/library/alpine:"
     )
-    assert environment[run_harbor.EGRESS_CONTROL_SIDECAR_BASE_IMAGE_ENV].startswith(
-        "docker.1ms.run/gogost/gost:"
-    )
+    assert environment[
+        run_harbor.EGRESS_CONTROL_SIDECAR_BASE_IMAGE_ENV
+    ].startswith("docker.1ms.run/gogost/gost:")
 
 
 def test_dataset_oracle_allows_multiple_attempts(
@@ -405,41 +402,6 @@ def test_model_agent_runs_single_task_directly(
     )
 
 
-def test_explicit_endpoint_controls_both_network_host_and_agent_environment(
-    tmp_path: Path,
-) -> None:
-    env_file = tmp_path / "model.env"
-    env_file.write_text(
-        "LLM_MODEL=openai/custom\nLLM_BASE_URL=https://old.example/v1\n"
-    )
-    with (
-        patch("adapters.belta.run_harbor.ensure_nftables_modules"),
-        patch("adapters.belta.run_harbor.ensure_retire_environment_images"),
-        patch(
-            "adapters.belta.run_harbor.subprocess.run", return_value=Mock(returncode=0)
-        ) as run,
-        pytest.raises(SystemExit) as result,
-    ):
-        run_harbor.main(
-            [
-                "--path",
-                str(tmp_path),
-                "--env-file",
-                str(env_file),
-                "--host-cache-dir",
-                str(tmp_path / "cache"),
-                "--base-url",
-                "https://new.example/v1",
-            ]
-        )
-    assert result.value.code == 0
-    command = run.call_args.args[0]
-    assert command[command.index("--allow-agent-host") + 1] == "new.example"
-    assert "OPENAI_BASE_URL=https://new.example/v1" in command
-    assert "OPENAI_API_BASE=https://new.example/v1" in command
-    assert "old.example" in env_file.read_text()
-
-
 def test_model_dataset_runs_all_exported_tasks_without_external_filters(
     tmp_path: Path,
 ) -> None:
@@ -551,7 +513,9 @@ def test_host_cache_is_complete_and_isolated_by_role(tmp_path: Path) -> None:
     )
 
     agent_mount = json.loads(arguments[arguments.index("--mounts") + 1])
-    verifier_mount = json.loads(arguments[arguments.index("--verifier-mounts") + 1])
+    verifier_mount = json.loads(
+        arguments[arguments.index("--verifier-mounts") + 1]
+    )
     assert agent_mount == [
         {
             "type": "bind",

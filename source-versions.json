@@ -32,10 +32,5 @@
     }
   ],
   "layout": "Source snapshots, with required submodules materialized; Git history and credentials are excluded.",
-  "distribution_changes": [
-    "belta/uv.lock",
-    "FeatureFactory/.gitmodules",
-    "harbor/adapters/belta/run_harbor.py",
-    "harbor/tests/unit/adapters/test_belta_runner.py"
-  ]
+  "distribution_changes": []
 }

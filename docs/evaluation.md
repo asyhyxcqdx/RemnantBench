@@ -1,73 +1,53 @@
-# 使用冻结题集测评
+# 使用原 Harbor 和本批配置测评
 
-先完成根目录 README 的安装、数据下载和镜像导入。无需运行 Belta 构建流程，
-也无需连接我们原来的服务器。所有正式任务的题目、Gold、测试、镜像标识和
-计分配置均已冻结；使用 `scripts/verify.py` 核查材料。
+先按根 README 下载数据、导入镜像、安装 Harbor。以下命令在 `RemnantBench/harbor`
+目录执行。原入口与原项目说明分别为
+[`run_harbor.py`](../harbor/adapters/belta/run_harbor.py) 和
+[adapter README](../harbor/adapters/belta/README.md)。
 
-## 命令行参数
+## 直接运行示例
 
 ```bash
-python3 scripts/evaluate.py \
-  --model GPT-6.1-Sol \
-  --experiment Full200 \
-  --env-file sol.env \
-  --base-url https://api.openlux.ai/v1 \
-  --reasoning-effort high \
-  --step-limit 150 \
-  --concurrency 4
+uv run --no-sync python -m adapters.belta.run_harbor \
+  --path ../datasets/Full200 \
+  --env-file ../sol.env \
+  --agent mini-swe-agent \
+  --model openai/gpt-6.1-sol \
+  --n-concurrent 4 --n-attempts 1 \
+  --job-name Full200 \
+  -- --jobs-dir ../belta-step150/GPT-6.1-Sol --max-retries 0 \
+  --ak config_file=../configs/connection-configs/gpt-6.1-sol.yaml \
+  --ak reasoning_effort=high \
+  --ak responses_system_as_instructions=true
 ```
 
-| 参数 | 含义 |
-| --- | --- |
-| `--model` | 预设名称，或自定义 `provider/model` |
-| `--experiment` | `Full200`、`Lite40`、`Lite40-file-hints`、`Lite40-neutral-repair` |
-| `--env-file` | 使用者自己的密钥文件，默认 `model.env` |
-| `--base-url` | 同时覆盖 API 请求地址和 Agent 网络允许的主机 |
-| `--reasoning-effort` | 覆盖预设推理档位；不会自动验证服务商是否实际执行该档位 |
-| `--step-limit` | mini 的模型查询上限，默认 150；正式比较保持一致 |
-| `--concurrency` | 同时运行的任务数，默认 1 |
-| `--task` | 只跑指定任务 ID / Harbor glob，可以重复使用 |
-| `--request-timeout` | 单次 API 请求超时秒数 |
-| `--output-dir` | 输出根目录，默认仓库的 `belta-step150` |
-| `--dry-run` | 打印最终命令，不执行测评 |
+`sol.env` 从 `configs/api.env.example` 复制并填入对应渠道的密钥。
+`config_file` 读取原模型连接配置；`agent.step_limit: 150` 已写在该 YAML 内。
+`--ak` 是 Harbor 的 `--agent-kwarg` 简写。已有 `config_file` 时，不再同时传 `config`。
 
-高级参数：`--provider-model` 替换预设内的 provider/model ID，
-`--model-class litellm_response` 选择 Responses，
-`--responses-system-as-instructions` 将原系统提示词发送到顶层 instructions。
-自定义 `provider/model` 默认使用 mini 原生 Chat 工具调用，不套用预设的特殊行为。
+| 模型 | `--model` | `config_file` 文件名 | `--ak reasoning_effort=` | 额外的原有开关 |
+| --- | --- | --- | --- | --- |
+| GPT-6-Astra | `openai/gpt-6-astra` | `gpt-6-astra.yaml` | `xhigh` | `--ak responses_system_as_instructions=true` |
+| GPT-6.1-Sol | `openai/gpt-6.1-sol` | `gpt-6.1-sol.yaml` | `high` | `--ak responses_system_as_instructions=true` |
+| Claude-Opus-5.5 | `anthropic/claude-opus-5-5` | `claude-opus-5-5.yaml` | `max` | — |
+| Gemini-3.8-Flash | `litellm_proxy/gemini-3.8-flash` | `gemini-3.8-flash.yaml` | `high` | — |
+| Kimi-K3 | `litellm_proxy/kimi-k3` | `kimi-k3.yaml` | `max` | — |
+| GLM-5.3 | `litellm_proxy/glm-5.3` | `glm-5.3.yaml` | `max` | `--ak retry_service_failures=true` |
+| DeepSeek-V4.1-Flash | `litellm_proxy/deepseek-v4.1-flash` | `deepseek-v4.1-flash.yaml` | `max` | — |
 
-预设保存于 `configs/models.json`。参数覆盖预设后，程序将结果作为一个内联
-`--ak config=...` 传给 Harbor，避免 `config` 和 `config_file` 同时出现。
-Harbor 自动在 Job/Trial 的 `config.json` 中记录实际运行配置。
+所有 YAML 位于 `configs/connection-configs/`。模型、档位与特殊开关来自这批原有
+连接配置和实际试跑记录；完整逐条命令见 [分工说明](collaboration.md)。
+修改渠道地址时，同时修改私有 env 的地址与 YAML 的 `api_base`，沿用原入口读取方式。
 
-## 预设与凭据
+## 题集与输出路径
 
-| 预设 | 推理档位 | 说明 |
-| --- | --- | --- |
-| GPT-6-Astra | xhigh | Responses，系统提示词只发一份 |
-| GPT-6.1-Sol | high | Responses，系统提示词只发一份 |
-| Claude-Opus-5.5 | max | Anthropic adaptive thinking |
-| Gemini-3.8-Flash | high | Chat/native tools |
-| Kimi-K3 | max | Chat/native tools |
-| GLM-5.3 | max | 开启已知 OpenLux 服务错误的专项重试 |
-| DeepSeek-V4.1-Flash | max | Chat/native tools |
-| Qwen3.8-27B | 服务端/模型默认 | 本地模型服务；预设仅固定步数 |
-| Qwen3.6-35B-A3B | 服务端/模型默认 | 本地模型服务；预设仅固定步数 |
-
-API 预设来自本次 OpenLux 渠道试跑。其他供应商的模型 ID、参数和端点是否兼容，
-需要按该供应商实际接口设置；预设不是任意供应商兼容性的保证。
-Claude 预设端点为 `https://api.openlux.ai`，其他 API 预设为
-`https://api.openlux.ai/v1`。不传 `--base-url` 时使用预设地址。
-
-密钥写入私有 `.env` 文件的 `MSWEA_API_KEY`。不同模型使用不同渠道时分别建
-`sol.env`、`glm.env` 等文件。Qwen 需要把 `LLM_BASE_URL` 和 `OPENAI_BASE_URL`
-设置成容器可访问的模型服务地址，或传入 `--base-url`；不要用指向容器自身的
-`localhost`。不把实际密钥写入预设、命令行或 Git。
-
-## 结果、步数与重试
+通过 `--path ../datasets/Full200`、`../datasets/Lite40`、
+`../datasets/Lite40-file-hints` 或 `../datasets/Lite40-neutral-repair` 选择题集。
+使用对应实验名作为 `--job-name`，通过 `--jobs-dir ../belta-step150/<模型>` 指定父目录。
+Harbor 直接生成：
 
 ```text
-belta-step150/<model>/<experiment>/
+belta-step150/<模型>/<实验>/
 ├── config.json
 ├── result.json
 ├── job.log
@@ -75,24 +55,22 @@ belta-step150/<model>/<experiment>/
     ├── result.json
     ├── agent/trajectory.json
     ├── agent/mini-swe-agent.trajectory.json
-    ├── artifacts/agent_changes.patch
-    └── verifier/
+    ├── artifacts/logs/artifacts/agent_changes.patch
+    └── verifier/belta_results.json
 ```
 
-已有同名输出目录会被入口拒绝，避免重复付费。要续跑时，在 `harbor/` 下使用
-`uv run --no-sync harbor jobs resume -p /absolute/path/to/job`，先确认目录、原凭据
-文件和配置仍存在。需要独立试跑时指定另一个 `--output-dir`。
+单题试跑使用原入口的 `--include-task-name TASK_ID`（放在 `--` 前），并指定独立的
+`--job-name`。全新 Job 中断后可使用 Harbor 原有的
+`uv run --no-sync harbor jobs resume -p /absolute/path/to/job`。
+Qwen 已迁移并复用旧记录的特殊 Job 继续按原来的管理方式处理。
 
-150 步限制指 mini 的模型查询次数，达到上限原始轨迹记录 `LimitsExceeded`。
-一轮查询内可能有多次传输重试，所以步数不等于 HTTP 请求次数。
-ATIF 的总步骤还包含用户消息等，不能拿来代替这个上限。
-Agent 每题时限 3600 秒，独立 Verifier 时限 1800 秒；已有补丁仍会进入验证。
+## 已有预算与错误处理
 
-网络/瞬时 API 异常保留 mini 原生 10 次总尝试，九次等待为
-4、4、4、8、16、32、60、60、60 秒。已知 GLM HTTP-200 服务错误额外重试 5 次，
-等待 2、4、8、16、32 秒；错误内容不进入模型上下文。格式错误仍走 mini 原生纠正流程。
-整题重试固定为 0，避免将请求重试与重复跑整题混在一起。
+mini 的 `agent.step_limit: 150` 限制模型查询次数；达到上限，原轨迹记录
+`LimitsExceeded`。单次查询内的传输重试不等于新的 Agent 步数。
+Agent 3600 秒、Verifier 1800 秒来自冻结任务的 `task.toml`。
+`--max-retries 0` 限制的是整题重跑；请求级重试仍按原 Harbor 适配补丁执行。
+各重试条件、次数和退避间隔见原 [adapter README](../harbor/adapters/belta/README.md#mini-swe-agent-api-transport)。
 
-先以 1–4 并发验证目标机器。Full200 表示任务总数，不能据此判断可运行 200 并发。
-每题声明 2 CPU、8 GiB RAM，Agent 和独立 Verifier 各有执行环境；还需要镜像、
-容器写层和日志空间。镜像压缩包大小小于解压后的 Docker 实际占用。
+并发通过原 `--n-concurrent` 设置，上面以 4 为例。实际并发按运行机器的资源安排。
+结果、计分与诊断沿用原 Harbor 及 Belta Result Plugin，字段来源见 [指标说明](metrics.md)。
