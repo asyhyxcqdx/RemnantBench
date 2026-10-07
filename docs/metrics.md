@@ -11,7 +11,8 @@ python3 scripts/summarize.py belta-step150/GLM-5.3/Full200 --csv glm-full200.csv
 
 | 指标 | 来源和含义 |
 | --- | --- |
-| Reward | Harbor `verifier_result.rewards.reward`；验证超时未产出奖励时为 null，不使用分析明细中的兜底 0 替代 |
+| Reward | `belta_results.json.reward`，无明细时读取 Harbor reward；按已有补丁口径，完整 Verifier 超时计 0 并纳入分母 |
+| `raw_harbor_reward` | Harbor `verifier_result.rewards.reward` 原始值，仅供审计；超时时可为 null，不代替上述 Reward |
 | Score | `tests.metrics.regression_gated_recovery`，无回归修复率；保持原评测表口径 |
 | `patch_similarity` | `patch_code_similarity`，冻结配置下的 Patch-only CrystalBLEU，独立于 Score |
 | Coverage | `deletions.gold_coverage`，Gold 目标旧行的删除匹配率 |
@@ -26,9 +27,9 @@ Gold 删除目标；Coverage 高不能独自证明采用了纯删除式修复。
 `artifacts/agent_changes.patch`，可以检查具体新增/删除内容。
 
 Score 在引入测试回归时为 0，否则为原失败测试的修复比例。完整 Verifier 超时后，
-Belta 插件按既定“全部测试文件失败”口径补写分析明细，Score=0，但 Harbor Reward
-仍为 null。脚本保留这两个不同口径；汇报时应同时说明超时数，不能把该兜底分数
-称为已完成测试的实测分数。
+Belta 插件按既定“全部测试文件失败”口径补写分析明细，Reward=0、Score=0，均纳入
+整套题目的均值。Harbor 原始 reward 仍可为 null，另存审计列。汇报时同时保留超时
+状态；没有插件兜底明细的其他基础设施错误仍为未知，不统一填 0。
 
 对没有完整缓存数据的 Trial，ATIF `final_metrics.extra` / Agent metadata 中的
 `cache_usage_missing_calls` 与 `cache_tokens_reported` 保留缺失调用数、已报告缓存量。

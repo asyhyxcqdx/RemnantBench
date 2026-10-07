@@ -55,7 +55,8 @@ def collect(job: Path) -> list[dict]:
             {
                 "task": result.get("task_name"),
                 "trial": trial.name,
-                "reward": rewards.get("reward"),
+                "reward": details.get("reward", rewards.get("reward")),
+                "raw_harbor_reward": rewards.get("reward"),
                 "score": ((details.get("tests") or {}).get("metrics") or {}).get(
                     "regression_gated_recovery"
                 ),

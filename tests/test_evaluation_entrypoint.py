@@ -189,26 +189,42 @@ def test_missing_score_is_reported_with_its_denominator():
     }
 
 
-def test_collection_uses_test_recovery_and_preserves_missing_reward(tmp_path):
+@pytest.mark.parametrize("timeout", [False, True])
+def test_collection_uses_test_recovery_and_existing_timeout_reward_policy(tmp_path, timeout):
     trial = tmp_path / "trial"
     (trial / "verifier").mkdir(parents=True)
     (trial / "result.json").write_text(json.dumps({
-        "finished_at": "2026-10-08T00:00:00", "verifier_result": None,
+        "finished_at": "2026-10-08T00:00:00",
+        "verifier_result": None if timeout else {"rewards": {"reward": 0}},
         "agent_result": {"n_cache_tokens": 0},
-        "exception_info": {"exception_type": "VerifierTimeoutError"},
+        "exception_info": {"exception_type": "VerifierTimeoutError"} if timeout else None,
     }))
     (trial / "verifier/belta_results.json").write_text(json.dumps({
         "reward": 0, "patch_code_similarity": 0.8,
-        "tests": {"metrics": {"regression_gated_recovery": 0.25}},
+        "tests": {"metrics": {"regression_gated_recovery": 0 if timeout else 0.25}},
         "deletions": {"gold_coverage": 0.5},
     }))
     row, = summarize.collect(tmp_path)
-    assert row["score"] == 0.25
+    assert row["score"] == (0 if timeout else 0.25)
     assert row["patch_similarity"] == 0.8
     assert row["coverage"] == 0.5
-    assert row["reward"] is None
+    assert row["reward"] == 0
+    assert row["raw_harbor_reward"] == (None if timeout else 0)
     assert row["cache_tokens"] is None
-    assert row["exception"] == "VerifierTimeoutError"
+    assert row["exception"] == ("VerifierTimeoutError" if timeout else None)
+    assert summarize.aggregate([row])["reward"]["mean"] == 0
+
+
+def test_other_infrastructure_errors_without_plugin_details_stay_unknown(tmp_path):
+    trial = tmp_path / "trial"
+    trial.mkdir()
+    (trial / "result.json").write_text(json.dumps({
+        "finished_at": "2026-10-08T00:00:00", "verifier_result": None,
+        "exception_info": {"exception_type": "RuntimeError"},
+    }))
+    row, = summarize.collect(tmp_path)
+    assert row["reward"] is None
+    assert row["score"] is None
 
 
 @pytest.mark.parametrize("cached, expected", [(None, None), (0, 0), (12, 12)])
