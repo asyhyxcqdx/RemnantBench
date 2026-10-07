@@ -189,6 +189,46 @@ def test_missing_score_is_reported_with_its_denominator():
     }
 
 
+def test_collection_uses_test_recovery_and_preserves_missing_reward(tmp_path):
+    trial = tmp_path / "trial"
+    (trial / "verifier").mkdir(parents=True)
+    (trial / "result.json").write_text(json.dumps({
+        "finished_at": "2026-10-08T00:00:00", "verifier_result": None,
+        "agent_result": {"n_cache_tokens": 0},
+        "exception_info": {"exception_type": "VerifierTimeoutError"},
+    }))
+    (trial / "verifier/belta_results.json").write_text(json.dumps({
+        "reward": 0, "patch_code_similarity": 0.8,
+        "tests": {"metrics": {"regression_gated_recovery": 0.25}},
+        "deletions": {"gold_coverage": 0.5},
+    }))
+    row, = summarize.collect(tmp_path)
+    assert row["score"] == 0.25
+    assert row["patch_similarity"] == 0.8
+    assert row["coverage"] == 0.5
+    assert row["reward"] is None
+    assert row["cache_tokens"] is None
+    assert row["exception"] == "VerifierTimeoutError"
+
+
+@pytest.mark.parametrize("cached, expected", [(None, None), (0, 0), (12, 12)])
+def test_legacy_cache_requires_usage_for_every_call(cached, expected):
+    mini = {"info": {"model_stats": {"api_calls": 1}}, "messages": [
+        {"role": "assistant", "extra": {"response": {"usage": {
+            "prompt_tokens_details": {"cached_tokens": cached},
+        }}}},
+    ]}
+    assert summarize.cache_total({"n_cache_tokens": 0}, {}, mini) == expected
+    mini["info"]["model_stats"]["api_calls"] = 2
+    assert summarize.cache_total({"n_cache_tokens": 0}, {}, mini) is None
+
+
+def test_partial_cache_metadata_overrides_a_legacy_total():
+    assert summarize.cache_total(
+        {"n_cache_tokens": 123}, {"extra": {"cache_usage_complete": False}}, {}
+    ) is None
+
+
 def test_corrupt_image_download_is_rejected_before_docker(tmp_path):
     (tmp_path / "environment").mkdir()
     (tmp_path / "part").write_bytes(b"bad")

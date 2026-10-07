@@ -11,8 +11,9 @@ python3 scripts/summarize.py belta-step150/GLM-5.3/Full200 --csv glm-full200.csv
 
 | 指标 | 来源和含义 |
 | --- | --- |
-| Reward | 独立 Verifier 的测试结果 |
-| Score | `patch_code_similarity`，冻结配置下的 Patch-only CrystalBLEU |
+| Reward | Harbor `verifier_result.rewards.reward`；验证超时未产出奖励时为 null，不使用分析明细中的兜底 0 替代 |
+| Score | `tests.metrics.regression_gated_recovery`，无回归修复率；保持原评测表口径 |
+| `patch_similarity` | `patch_code_similarity`，冻结配置下的 Patch-only CrystalBLEU，独立于 Score |
 | Coverage | `deletions.gold_coverage`，Gold 目标旧行的删除匹配率 |
 | `agent_queries` | 原始 mini 轨迹的 `info.model_stats.api_calls`，150 步限制使用的口径 |
 | `atif_steps` | ATIF 消息/步骤数，包含用户消息等，不等于模型查询次数 |
@@ -24,10 +25,17 @@ Coverage 不是测试覆盖率。替换旧行时，Git diff 同时有删除和�
 Gold 删除目标；Coverage 高不能独自证明采用了纯删除式修复。原始补丁保存在
 `artifacts/agent_changes.patch`，可以检查具体新增/删除内容。
 
+Score 在引入测试回归时为 0，否则为原失败测试的修复比例。完整 Verifier 超时后，
+Belta 插件按既定“全部测试文件失败”口径补写分析明细，Score=0，但 Harbor Reward
+仍为 null。脚本保留这两个不同口径；汇报时应同时说明超时数，不能把该兜底分数
+称为已完成测试的实测分数。
+
 对没有完整缓存数据的 Trial，ATIF `final_metrics.extra` / Agent metadata 中的
 `cache_usage_missing_calls` 与 `cache_tokens_reported` 保留缺失调用数、已报告缓存量。
 跨 Trial 汇总也保持此规则：只要缺失，缓存总数为 null，同时展示已报告的部分和
 缺失 Trial 数，不把部分缓存量冒充完整总量。
+对没有完整性标记的旧轨迹，逐次核对 API usage；旧版 Harbor 的默认缓存值 0
+本身不作为缓存确实为零的证据。
 
 GLM 已识别的服务失败另存 `agent/service-failures.jsonl`，不进入对话；其返回的
 Token 纳入总量。失败响应缺 usage 时会标记缺失。mini 的费用估计不包含专项重试
