@@ -33,7 +33,7 @@ behavior. 本仓库包含任务构建、环境构建、Harbor 测评和结果汇
 
 ## 快速测评
 
-需要 Linux x86_64、Python 3.13、uv、Docker Engine（含 Compose 和 Buildx），
+需要 Linux x86_64、Python 3.13、uv、unzip、Docker Engine（含 Compose 和 Buildx），
 以及使用 Docker 和加载 nftables 模块的权限。API 测评不要求 GPU。
 
 ```bash
@@ -49,9 +49,9 @@ source harbor/.venv/bin/activate
 # 下载现成题集和镜像，避免重新构建
 uvx --from modelscope-hub==0.4.0 ms-hub download yinhuo/RemnantBench \
   --repo-type dataset --local-dir downloads \
-  --include 'remnantbench-data-v1.tar.gz' 'image-archive.json' 'images/*'
-python3 scripts/verify.py --archive downloads/remnantbench-data-v1.tar.gz
-tar -xzf downloads/remnantbench-data-v1.tar.gz --strip-components=1
+  --include 'remnantbench-data-v1.zip' 'image-archive.json' 'images/*'
+python3 scripts/verify.py --archive downloads/remnantbench-data-v1.zip
+unzip downloads/remnantbench-data-v1.zip
 python3 scripts/verify.py
 python3 scripts/images.py load --directory downloads
 

@@ -1,7 +1,9 @@
 {
-  "file": "remnantbench-data-v1.tar.gz",
-  "bytes": 64088749,
-  "sha256": "984b833c866e9a97fe65e53279ae4feeeb6fa1d2190787a27fcf1e9f7fe92275",
+  "file": "remnantbench-data-v1.zip",
+  "format": "zip",
+  "layout": "Extract at the RemnantBench repository root; archive entries start with datasets/.",
+  "bytes": 78221239,
+  "sha256": "a0132ac81bc4e15bd238f4bc7edb29b66b6c5df36c9e86b8af82ff20eef3ea5e",
   "tasks": {
     "Full200": 200,
     "Lite40": 40,
